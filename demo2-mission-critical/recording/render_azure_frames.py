@@ -56,12 +56,21 @@ def new_figure():
     return figure, axes
 
 
+def placeholder_banner(axes) -> None:
+    # These frames are API-rendered stand-ins; the portal needs an interactive sign-in.
+    axes.add_patch(FancyBboxPatch((0.0, 0.856), 1.0, 0.044, boxstyle="square,pad=0",
+                                  facecolor="#f2b705", edgecolor="#8a6d00", linewidth=1.4))
+    axes.text(0.5, 0.878, "TO BE UPDATED WITH ACTUAL AZURE PORTAL VIEWS",
+              color="#1a1400", fontsize=16, fontweight="bold", va="center", ha="center")
+
+
 def header(axes, breadcrumb: str, title: str, subtitle: str) -> None:
     axes.add_patch(FancyBboxPatch((0.0, 0.90), 1.0, 0.10, boxstyle="square,pad=0",
                                   facecolor="#010409", edgecolor=EDGE, linewidth=1))
     axes.text(0.035, 0.958, breadcrumb, color=MUTED, fontsize=12, va="center")
     axes.text(0.035, 0.923, title, color=TEXT, fontsize=21, fontweight="bold", va="center")
     axes.text(0.965, 0.940, subtitle, color=ACCENT, fontsize=12, va="center", ha="right")
+    placeholder_banner(axes)
 
 
 def panel(axes, x, y, w, h, title=None):

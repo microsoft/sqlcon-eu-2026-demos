@@ -8,9 +8,6 @@
     "dev": "vite",
     "dev:api": "tsx watch server/index.ts",
     "start:api": "tsx server/index.ts",
-    "load:potion-source": "tsx scripts/load-potion-source.ts",
-    "load:potion": "tsx scripts/load-potion.ts",
-    "benchmark:potion": "tsx scripts/benchmark-potion.ts",
     "build": "tsc --noEmit -p server/tsconfig.json && tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"

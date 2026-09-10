@@ -60,6 +60,9 @@ try {
   // Beat 1-3: the pilot answering a real question with vector search.
   // Hybrid is the app default, so the opening beats have to select vector explicitly.
   await clickByText(page, 'Vector')
+  // Discarded run: the first search of a session pays cold ANN reads and would
+  // otherwise put an unrepresentative number on the opening frames.
+  await search(page)
   await search(page)
   await clickTab(page, 'SQL query')
   await shot(page, 'frame1.png')
