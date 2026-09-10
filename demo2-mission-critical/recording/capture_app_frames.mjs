@@ -81,12 +81,13 @@ try {
   await shot(page, 'frame4.png')
 
   // Beat 5-6: the two targets that are not ready, with timings deliberately blank.
+  // Both now attempt a real connection, so the wait has to outlast the login timeout.
   await clickByText(page, 'Research')
-  await page.waitForTimeout(4000)
+  await page.waitForTimeout(30_000)
   await shot(page, 'frame5.png')
 
   await clickByText(page, 'Replica')
-  await page.waitForTimeout(4000)
+  await page.waitForTimeout(30_000)
   await shot(page, 'frame6.png')
 
   // Beat 7: closing shot on a clean pilot session rather than a repeat of frame 4.
