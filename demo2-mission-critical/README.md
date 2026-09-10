@@ -33,6 +33,33 @@ Two design decisions came out of testing and matter more than they look:
   passage that starts mid-sentence still reads. Journal front matter and reference lists
   are excluded through a persisted `is_boilerplate` flag.
 
+## What the timer measures
+
+The app shows **vector search** time, not the round trip. The ANN step is materialised into
+a table variable on its own and timed inside the engine with `SYSUTCDATETIME()`, so the
+number excludes rank fusion, the document joins, and context expansion.
+
+On the pilot it runs around 5 ms warm and about 25 ms on the first call after a resume.
+In keyword mode there is no vector search, so the field reads `--` rather than borrowing
+the round-trip number.
+
+## Three targets
+
+| Target | Environment key | What it is |
+|---|---|---|
+| Pilot | `small` | The serverless Hyperscale database in this repo |
+| Research | `large` | The full corpus, still loading |
+| Replica | `replica` | A serverless Hyperscale **named replica** of the full corpus |
+
+A named replica shares the primary's storage, so no data is copied and the corpus stays in
+one place. It is read-only and sized independently, which is exactly what a search workload
+wants. The application statement does not change between the three.
+
+The replica is **not created yet**. It lives on a shared benchmark server in another
+subscription and adds compute cost, so it needs a decision first.
+[deploy/create-named-replica.sh](deploy/create-named-replica.sh) has the exact commands and
+the caveats, including that auto-pause does not persist in every region.
+
 ## Layout
 
 ```

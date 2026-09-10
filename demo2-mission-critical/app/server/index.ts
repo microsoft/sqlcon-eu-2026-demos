@@ -3,11 +3,12 @@ import express from 'express'
 import sql from 'mssql'
 import type * as MSSQL from 'mssql'
 import { existsSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { performance } from 'node:perf_hooks'
 
-type Environment = 'small' | 'large'
+type Environment = 'small' | 'large' | 'replica'
 type SearchMode = 'vector' | 'keyword' | 'hybrid'
 
 type CorpusStatusRow = { ChunkCount: number; DocumentCount: number }
@@ -32,6 +33,7 @@ type SearchRow = {
   ChunkNumber: number
   Distance: number | null
   Score: number
+  VectorSearchMs: number | null
   PreviousPassage: string | null
   Passage: string
   NextPassage: string | null
@@ -49,6 +51,15 @@ class ApiError extends Error {
 const DATABASE_LABELS: Record<Environment, string> = {
   small: 'Caldova Pilot',
   large: 'Caldova Research',
+  replica: 'Research replica',
+}
+
+// A Hyperscale named replica shares the primary's storage, so the same statement runs
+// unchanged against an independently sized read-only endpoint.
+const ENVIRONMENT_PREFIXES: Record<Environment, string> = {
+  small: 'AZURE_SQL_SMALL',
+  large: 'AZURE_SQL_LARGE',
+  replica: 'AZURE_SQL_REPLICA',
 }
 
 const pools = new Map<string, PoolEntry>()
@@ -59,80 +70,8 @@ const distRoot = path.join(appRoot, 'dist')
 const distIndex = path.join(distRoot, 'index.html')
 const embeddingServiceUrl = (process.env.EMBEDDING_SERVICE_URL ?? 'http://127.0.0.1:8081').replace(/\/$/, '')
 
-const SEARCH_SQL = `
-DECLARE @QueryVector VECTOR(512) = CAST(@queryVectorJson AS VECTOR(512));
-
-WITH VectorRaw AS
-(
-  SELECT TOP (@candidates) WITH APPROXIMATE
-         chunk.document_id, chunk.chunk_number, vector_result.distance AS Distance
-  FROM VECTOR_SEARCH
-  (
-      TABLE = dbo.pmc_chunks AS chunk,
-      COLUMN = embedding,
-      SIMILAR_TO = @QueryVector,
-      METRIC = 'COSINE'
-  ) AS vector_result
-  WHERE @useVector = 1
-    AND chunk.is_boilerplate = 0
-  ORDER BY vector_result.distance
-),
-VectorCandidates AS
-(
-  SELECT document_id, chunk_number, Distance,
-         ROW_NUMBER() OVER (ORDER BY Distance) AS Position
-  FROM VectorRaw
-),
-KeywordCandidates AS
-(
-  SELECT TOP (@candidates)
-         chunk.document_id, chunk.chunk_number,
-         ROW_NUMBER() OVER (ORDER BY ranked.[RANK] DESC) AS Position
-  FROM FREETEXTTABLE(dbo.pmc_chunks, text_chunk, @queryText, @candidates) AS ranked
-  INNER JOIN dbo.pmc_chunks AS chunk ON chunk.chunk_id = ranked.[KEY]
-  WHERE @useKeyword = 1
-    AND chunk.is_boilerplate = 0
-  ORDER BY ranked.[RANK] DESC
-),
-Fused AS
-(
-  SELECT candidate.document_id, candidate.chunk_number,
-         SUM(1.0 / (60.0 + candidate.Position)) AS Score,
-         MIN(candidate.Distance) AS Distance
-  FROM
-  (
-    SELECT document_id, chunk_number, Position, Distance FROM VectorCandidates
-    UNION ALL
-    SELECT document_id, chunk_number, Position, NULL FROM KeywordCandidates
-  ) AS candidate
-  GROUP BY candidate.document_id, candidate.chunk_number
-),
-BestPerDocument AS
-(
-  SELECT document_id, chunk_number, Score, Distance,
-         ROW_NUMBER() OVER (PARTITION BY document_id ORDER BY Score DESC, chunk_number) AS DocumentRank
-  FROM Fused
-)
-SELECT TOP (@top)
-       CONCAT('PMC', document.pmcid) AS PmcId,
-       document.title AS Title,
-       best.chunk_number AS ChunkNumber,
-       best.Distance AS Distance,
-       best.Score AS Score,
-       previous_chunk.text_chunk AS PreviousPassage,
-       chunk.text_chunk AS Passage,
-       next_chunk.text_chunk AS NextPassage
-FROM BestPerDocument AS best
-INNER JOIN dbo.pmc_chunks AS chunk
-    ON chunk.document_id = best.document_id AND chunk.chunk_number = best.chunk_number
-INNER JOIN dbo.pmc_documents AS document
-    ON document.document_id = best.document_id
-LEFT JOIN dbo.pmc_chunks AS previous_chunk
-    ON previous_chunk.document_id = best.document_id AND previous_chunk.chunk_number = best.chunk_number - 1
-LEFT JOIN dbo.pmc_chunks AS next_chunk
-    ON next_chunk.document_id = best.document_id AND next_chunk.chunk_number = best.chunk_number + 1
-WHERE best.DocumentRank = 1
-ORDER BY best.Score DESC;`
+// The statement lives in server/search.sql so the app and the SQL tooling stay in step.
+const SEARCH_SQL = await readFile(path.join(path.dirname(fileURLToPath(import.meta.url)), 'search.sql'), 'utf8')
 
 const CORPUS_STATUS_QUERY = `
 SELECT (SELECT COUNT_BIG(*) FROM dbo.pmc_chunks) AS ChunkCount,
@@ -180,8 +119,8 @@ app.use((request, response, next) => {
 })
 
 function getEnvironment(value: unknown): Environment {
-  if (value !== 'small' && value !== 'large') {
-    throw new ApiError(400, 'INVALID_ENVIRONMENT', 'Environment must be small or large.')
+  if (value !== 'small' && value !== 'large' && value !== 'replica') {
+    throw new ApiError(400, 'INVALID_ENVIRONMENT', 'Environment must be small, large, or replica.')
   }
   return value
 }
@@ -195,7 +134,7 @@ function getSearchMode(value: unknown): SearchMode {
 }
 
 function getDatabaseTarget(environment: Environment): DatabaseTarget {
-  const prefix = environment === 'small' ? 'AZURE_SQL_SMALL' : 'AZURE_SQL_LARGE'
+  const prefix = ENVIRONMENT_PREFIXES[environment]
   const database = process.env[`${prefix}_DATABASE`]?.trim()
   if (!database) {
     throw new ApiError(503, 'DATABASE_NOT_CONFIGURED', `${prefix}_DATABASE is not configured.`)
@@ -365,6 +304,8 @@ app.post('/api/search', async (request, response) => {
       .input('useKeyword', sql.Bit, mode === 'keyword' || mode === 'hybrid')
       .query<SearchRow>(SEARCH_SQL)
     const databaseMs = performance.now() - queryStarted
+    // Measured inside the engine, so it is the ANN search only.
+    const vectorSearchMs = result.recordset[0]?.VectorSearchMs ?? null
 
     response.json({
       environment,
@@ -374,6 +315,7 @@ app.post('/api/search', async (request, response) => {
       documentCount: readiness.documentCount,
       indexStatus: readiness.indexReady ? 'Online · v3' : 'Not built',
       embedMs,
+      vectorSearchMs,
       databaseMs,
       totalMs: performance.now() - started,
       evidence: result.recordset.map((row) => ({

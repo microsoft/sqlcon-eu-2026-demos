@@ -1,0 +1,6 @@
+{
+  "model": "minishlab/potion-retrieval-32M",
+  "dimensions": 512,
+  "dtype": "float32",
+  "queries": []
+}

@@ -18,7 +18,7 @@ import './App.css'
 // Empty when the API is served from the same origin; set when the UI is hosted by Fabric.
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 
-type Environment = 'small' | 'large'
+type Environment = 'small' | 'large' | 'replica'
 type SearchMode = 'vector' | 'keyword' | 'hybrid'
 type ResultView = 'evidence' | 'sql'
 
@@ -40,6 +40,7 @@ type SearchResponse = {
   documentCount: number
   indexStatus: string
   embedMs: number
+  vectorSearchMs: number | null
   databaseMs: number
   totalMs: number
   evidence: Evidence[]
@@ -69,7 +70,14 @@ const DEMO_QUERIES = [
 const SEARCH_SQL = `DECLARE @QueryVector VECTOR(512) =
   CAST(@queryVectorJson AS VECTOR(512));
 
-WITH VectorRaw AS (
+-- The vector step is materialised on its own so it can be
+-- timed in-engine: this is the ANN search, not the joins.
+SET @VectorStart = SYSUTCDATETIME();
+
+INSERT @VectorCandidates (document_id, chunk_number, Distance, Position)
+SELECT ranked.document_id, ranked.chunk_number, ranked.Distance,
+       ROW_NUMBER() OVER (ORDER BY ranked.Distance)
+FROM (
   SELECT TOP (@candidates) WITH APPROXIMATE
     chunk.document_id, chunk.chunk_number,
     vector_result.distance AS Distance
@@ -79,20 +87,25 @@ WITH VectorRaw AS (
     SIMILAR_TO = @QueryVector,
     METRIC = 'COSINE'
   ) AS vector_result
-  WHERE @useVector = 1 AND chunk.is_boilerplate = 0
+  WHERE chunk.is_boilerplate = 0
   ORDER BY vector_result.distance
-),
-KeywordCandidates AS (
-  SELECT TOP (@candidates)
-    chunk.document_id, chunk.chunk_number,
-    ROW_NUMBER() OVER (ORDER BY ranked.[RANK] DESC) AS Position
-  FROM FREETEXTTABLE(dbo.pmc_chunks, text_chunk,
-                     @queryText, @candidates) AS ranked
-  INNER JOIN dbo.pmc_chunks AS chunk
-    ON chunk.chunk_id = ranked.[KEY]
-  WHERE @useKeyword = 1 AND chunk.is_boilerplate = 0
-  ORDER BY ranked.[RANK] DESC
-)
+) AS ranked;
+
+SET @VectorMicroseconds =
+  DATEDIFF_BIG(microsecond, @VectorStart, SYSUTCDATETIME());
+
+-- Keyword candidates come from the full-text index.
+INSERT @KeywordCandidates (document_id, chunk_number, Position)
+SELECT TOP (@candidates)
+  chunk.document_id, chunk.chunk_number,
+  ROW_NUMBER() OVER (ORDER BY ranked.[RANK] DESC)
+FROM FREETEXTTABLE(dbo.pmc_chunks, text_chunk,
+                   @queryText, @candidates) AS ranked
+INNER JOIN dbo.pmc_chunks AS chunk
+  ON chunk.chunk_id = ranked.[KEY]
+WHERE chunk.is_boilerplate = 0
+ORDER BY ranked.[RANK] DESC;
+
 -- Reciprocal rank fusion, then the best passage per article,
 -- returned with the chunks either side for context.
 SELECT TOP (@top)
@@ -118,6 +131,13 @@ ORDER BY best.Score DESC;`
 const databaseLabels: Record<Environment, string> = {
   small: 'Caldova Pilot',
   large: 'Caldova Research',
+  replica: 'Research replica',
+}
+
+const environmentButtons: Record<Environment, string> = {
+  small: 'Pilot',
+  large: 'Research',
+  replica: 'Replica',
 }
 
 const modeLabels: Record<SearchMode, string> = {
@@ -238,7 +258,7 @@ function App() {
             <div className="environment-control" aria-label="Search configuration">
               <span className="control-label">Database</span>
               <div className="segment-group">
-                {(['small', 'large'] as const).map((option) => (
+                {(['small', 'large', 'replica'] as const).map((option) => (
                   <button
                     className={environment === option ? 'selected' : ''}
                     key={option}
@@ -246,7 +266,7 @@ function App() {
                     onClick={() => chooseEnvironment(option)}
                     aria-pressed={environment === option}
                   >
-                    {option === 'small' ? 'Pilot' : 'Research'}
+                    {environmentButtons[option]}
                   </button>
                 ))}
               </div>
@@ -311,7 +331,9 @@ function App() {
             </div>
             <div className="metric featured">
               <Clock3 size={18} />
-              <span>Database time<strong>{metrics ? `${metrics.databaseMs.toFixed(0)} ms` : '--'}</strong></span>
+              <span>Vector search<strong>
+                {metrics?.vectorSearchMs != null ? `${metrics.vectorSearchMs.toFixed(1)} ms` : '--'}
+              </strong></span>
             </div>
             <div className="metric">
               <Clock3 size={18} />

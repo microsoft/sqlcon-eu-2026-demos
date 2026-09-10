@@ -23,7 +23,7 @@ properties:
     containers:
       # The API and the embedding service share a replica so they talk over loopback.
       - name: caldova-app
-        image: antocaldovaacr.azurecr.io/caldova-app:v3
+        image: antocaldovaacr.azurecr.io/caldova-app:v4
         resources:
           cpu: 1.0
           memory: 2Gi
@@ -36,6 +36,11 @@ properties:
             value: e3db9235-290a-4e68-b3d2-6de46a73fd30
           - name: EMBEDDING_SERVICE_URL
             value: http://127.0.0.1:8081
+          # Uncomment once deploy/create-named-replica.sh has been run.
+          # - name: AZURE_SQL_REPLICA_SERVER
+          #   value: vbench-large-replica.database.windows.net
+          # - name: AZURE_SQL_REPLICA_DATABASE
+          #   value: vbench_large_read
           - name: HOST
             value: 0.0.0.0
           - name: PORT

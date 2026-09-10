@@ -1,0 +1,74 @@
+/*
+    Approval-gated minimal PMC source schema for antho-caldova/research only.
+
+    The lower-case object and column names intentionally match the canonical
+    vbench_large source contract consumed by the Potion sidecar and app.
+*/
+
+SET NOCOUNT ON;
+SET XACT_ABORT ON;
+
+DECLARE @DeploymentApproved BIT = 0;
+DECLARE @ServerName NVARCHAR(128) = LOWER(CONVERT(NVARCHAR(128), SERVERPROPERTY('ServerName')));
+
+IF @DeploymentApproved <> 1
+    THROW 51230, 'Deployment is blocked. Set @DeploymentApproved = 1 only after explicit approval.', 1;
+
+IF LOWER(DB_NAME()) <> N'research'
+    THROW 51231, 'This schema may be applied only to the research database.', 1;
+
+IF @ServerName <> N'antho-caldova'
+   AND @ServerName <> N'antho-caldova.database.windows.net'
+   AND @ServerName NOT LIKE N'antho-caldova.%'
+    THROW 51232, 'This schema may be applied only to the antho-caldova logical server.', 1;
+
+ALTER DATABASE CURRENT SET COMPATIBILITY_LEVEL = 170;
+
+BEGIN TRY
+    BEGIN TRANSACTION;
+
+    IF OBJECT_ID(N'dbo.pmc_documents', N'U') IS NULL
+    BEGIN
+        CREATE TABLE dbo.pmc_documents
+        (
+            document_id INT NOT NULL,
+            pmcid INT NOT NULL,
+            title NVARCHAR(2000) NULL,
+            CONSTRAINT PK_pmc_documents
+                PRIMARY KEY CLUSTERED (document_id),
+            CONSTRAINT UQ_pmc_documents_pmcid
+                UNIQUE (pmcid),
+            CONSTRAINT CK_pmc_documents_document_id
+                CHECK (document_id > 0),
+            CONSTRAINT CK_pmc_documents_pmcid
+                CHECK (pmcid > 0)
+        );
+    END;
+
+    IF OBJECT_ID(N'dbo.pmc_chunks', N'U') IS NULL
+    BEGIN
+        CREATE TABLE dbo.pmc_chunks
+        (
+            document_id INT NOT NULL,
+            chunk_number INT NOT NULL,
+            text_chunk NVARCHAR(MAX) NOT NULL,
+            CONSTRAINT PK_pmc_chunks
+                PRIMARY KEY CLUSTERED (document_id, chunk_number),
+            CONSTRAINT FK_pmc_chunks_pmc_documents
+                FOREIGN KEY (document_id) REFERENCES dbo.pmc_documents (document_id),
+            CONSTRAINT CK_pmc_chunks_document_id
+                CHECK (document_id > 0),
+            CONSTRAINT CK_pmc_chunks_chunk_number
+                CHECK (chunk_number >= 0),
+            CONSTRAINT CK_pmc_chunks_text_chunk
+                CHECK (DATALENGTH(text_chunk) > 0)
+        );
+    END;
+
+    COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+    IF XACT_STATE() <> 0
+        ROLLBACK TRANSACTION;
+    THROW;
+END CATCH;
