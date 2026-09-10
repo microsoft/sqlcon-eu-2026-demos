@@ -273,9 +273,12 @@ app.get('/api/readiness/:environment', async (request, response) => {
 app.post('/api/search', async (request, response) => {
   const started = performance.now()
   try {
-    const body = request.body as { environment?: unknown; query?: unknown; mode?: unknown }
+    const body = request.body as {
+      environment?: unknown; query?: unknown; mode?: unknown; peerReviewedOnly?: unknown
+    }
     const environment = getEnvironment(body.environment)
     const mode = getSearchMode(body.mode)
+    const peerReviewedOnly = body.peerReviewedOnly === true
     const query = typeof body.query === 'string' ? body.query.trim() : ''
     if (!query || query.length > 500) {
       throw new ApiError(400, 'INVALID_QUERY', 'Provide a question between 1 and 500 characters.')
@@ -302,6 +305,7 @@ app.post('/api/search', async (request, response) => {
       .input('top', sql.Int, 5)
       .input('useVector', sql.Bit, mode === 'vector' || mode === 'hybrid')
       .input('useKeyword', sql.Bit, mode === 'keyword' || mode === 'hybrid')
+      .input('peerReviewedOnly', sql.Bit, peerReviewedOnly)
       .query<SearchRow>(SEARCH_SQL)
     const databaseMs = performance.now() - queryStarted
     // Measured inside the engine, so it is the ANN search only.
@@ -311,6 +315,7 @@ app.post('/api/search', async (request, response) => {
       environment,
       databaseLabel: readiness.databaseLabel,
       mode,
+      peerReviewedOnly,
       chunkCount: readiness.chunkCount,
       documentCount: readiness.documentCount,
       indexStatus: readiness.indexReady ? 'Online · v3' : 'Not built',

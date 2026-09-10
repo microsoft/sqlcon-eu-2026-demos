@@ -37,16 +37,6 @@
   text-decoration: none;
 }
 
-.brand-mark {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  color: white;
-  background: var(--forest);
-  border-radius: 7px;
-}
-
 .primary-nav { align-self: stretch; gap: 32px; }
 .primary-nav a {
   height: 100%;
@@ -422,8 +412,8 @@ h1 {
   border: 1px solid var(--line);
   border-radius: 7px;
   overflow: hidden;
-  background: #10231d;
-  box-shadow: 0 18px 35px rgba(19, 39, 33, 0.11);
+  background: #ffffff;
+  box-shadow: 0 18px 35px rgba(19, 39, 33, 0.06);
 }
 .sql-caption {
   min-height: 54px;
@@ -432,18 +422,18 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  border-bottom: 1px solid #2d443b;
-  color: #aebdb6;
+  border-bottom: 1px solid var(--line);
+  color: #5d6b65;
   font-size: 11px;
 }
-.sql-caption > div { gap: 7px; color: #e4ece8; font-weight: 800; }
-.sql-caption svg { color: #68c29e; }
+.sql-caption > div { gap: 7px; color: #16281f; font-weight: 800; }
+.sql-caption svg { color: #1f7a52; }
 .sql-view pre {
   min-height: 430px;
   margin: 0;
   padding: 29px;
   overflow: auto;
-  color: #dce9e3;
+  color: #1d2b25;
   font: 13px/1.75 var(--mono);
   white-space: pre-wrap;
 }

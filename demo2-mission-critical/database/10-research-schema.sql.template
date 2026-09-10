@@ -61,6 +61,8 @@ BEGIN TRY
         text_chunk NVARCHAR(MAX) NOT NULL,
         embedding VECTOR(512) NOT NULL,
         chunk_id INT IDENTITY(1,1) NOT NULL,
+        is_preprint BIT NOT NULL
+            CONSTRAINT DF_pmc_chunks_is_preprint DEFAULT 0,
         CONSTRAINT PK_pmc_chunks PRIMARY KEY CLUSTERED (document_id, chunk_number),
         CONSTRAINT UQ_pmc_chunks_chunk_id UNIQUE (chunk_id),
         CONSTRAINT FK_pmc_chunks_pmc_documents

@@ -1,6 +1,7 @@
 // Captures Caldova app frames at a controlled desktop viewport.
 // The shared VS Code browser renders at ~578px wide, which forces the mobile layout.
 import { chromium } from 'playwright'
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -36,11 +37,18 @@ const setQuestion = (page, text) => page.evaluate((value) => {
 const band = (page) => page.evaluate(
   () => document.querySelector('.status-band')?.textContent?.trim().replace(/\s+/g, ' ') ?? '')
 
+// Frames whose status band is not live get a work-in-progress banner at build time.
+const NOT_LIVE = /not ready|not reachable|unavailable|error/i
+const workInProgress = []
+
 const shot = async (page, name) => {
   await page.waitForTimeout(700)
   await page.evaluate(() => window.scrollTo(0, 0))
   await page.screenshot({ path: path.join(frames, name) })
-  console.log(`captured ${name.padEnd(12)} ${(await band(page)).slice(0, 120)}`)
+  const status = await band(page)
+  const wip = NOT_LIVE.test(status)
+  if (wip) workInProgress.push(name)
+  console.log(`captured ${name.padEnd(12)} ${wip ? '[WIP] ' : ''}${status.slice(0, 120)}`)
 }
 
 const search = async (page) => {
@@ -57,9 +65,8 @@ try {
   await page.goto(appUrl, { waitUntil: 'networkidle', timeout: 90_000 })
   await page.waitForTimeout(2500)
 
-  // Beat 1-3: the pilot answering a real question with vector search.
-  // Hybrid is the app default, so the opening beats have to select vector explicitly.
-  await clickByText(page, 'Vector')
+  // Beats 1-4 all run on hybrid, the app default, so the same result set carries the
+  // whole opening and beat 4 explains what has been on screen rather than re-running.
   // Discarded run: the first search of a session pays cold ANN reads and would
   // otherwise put an unrepresentative number on the opening frames.
   await search(page)
@@ -77,14 +84,13 @@ try {
   })
   await shot(page, 'frame3.png')
 
-  // Beat 4: hybrid fuses vector and keyword, so it gets its own frame.
-  await clickByText(page, 'Hybrid')
-  await search(page)
-  await clickTab(page, 'Evidence')
+  // Beat 4: cut back to the query so the filter predicate inside VECTOR_SEARCH is on
+  // screen while it is described.
+  await clickTab(page, 'SQL query')
   await shot(page, 'frame4.png')
 
-  // Beat 5-6: the two targets that are not ready, with timings deliberately blank.
-  // Both now attempt a real connection, so the wait has to outlast the login timeout.
+  // Beats 7 and 10: the scaled targets. They still capture whatever the app reports, and
+  // any frame that is not live is flagged for a work-in-progress banner.
   await clickByText(page, 'Research')
   await page.waitForTimeout(30_000)
   await shot(page, 'frame5.png')
@@ -93,11 +99,14 @@ try {
   await page.waitForTimeout(30_000)
   await shot(page, 'frame6.png')
 
-  // Beat 7: closing shot on a clean pilot session rather than a repeat of frame 4.
+  // Beat 11: closing shot on a clean pilot session rather than a repeat of frame 4.
   await page.goto(appUrl, { waitUntil: 'networkidle', timeout: 90_000 })
   await page.waitForTimeout(3000)
   await setQuestion(page, QUESTION)
   await shot(page, 'frame7.png')
+
+  fs.writeFileSync(path.join(frames, 'wip.json'), `${JSON.stringify(workInProgress, null, 2)}\n`)
+  console.log(`work in progress: ${workInProgress.join(', ') || 'none'}`)
 } finally {
   await browser.close()
 }

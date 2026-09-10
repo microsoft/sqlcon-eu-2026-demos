@@ -57,6 +57,7 @@ BEGIN
             METRIC = 'COSINE'
         ) AS vector_result
         WHERE chunk.is_boilerplate = 0
+          AND (@peerReviewedOnly = 0 OR chunk.is_preprint = 0)
         ORDER BY vector_result.distance
     ) AS ranked;
 
@@ -74,6 +75,7 @@ BEGIN
     INNER JOIN dbo.pmc_chunks AS chunk
         ON chunk.chunk_id = ranked.[KEY]
     WHERE chunk.is_boilerplate = 0
+      AND (@peerReviewedOnly = 0 OR chunk.is_preprint = 0)
     ORDER BY ranked.[RANK] DESC;
 END;
 

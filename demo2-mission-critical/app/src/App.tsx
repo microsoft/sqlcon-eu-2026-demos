@@ -6,11 +6,8 @@ import {
   Check,
   ChevronDown,
   Clock3,
-  Database,
   FileText,
-  FlaskConical,
   Search,
-  ShieldCheck,
   Sparkles,
 } from 'lucide-react'
 import './App.css'
@@ -87,7 +84,8 @@ FROM (
     SIMILAR_TO = @QueryVector,
     METRIC = 'COSINE'
   ) AS vector_result
-  WHERE chunk.is_boilerplate = 0
+  -- Filters run inside the vector search, not after it.
+  WHERE chunk.is_boilerplate = 0__VECTOR_FILTER__
   ORDER BY vector_result.distance
 ) AS ranked;
 
@@ -103,7 +101,7 @@ FROM FREETEXTTABLE(dbo.pmc_chunks, text_chunk,
                    @queryText, @candidates) AS ranked
 INNER JOIN dbo.pmc_chunks AS chunk
   ON chunk.chunk_id = ranked.[KEY]
-WHERE chunk.is_boilerplate = 0
+WHERE chunk.is_boilerplate = 0__KEYWORD_FILTER__
 ORDER BY ranked.[RANK] DESC;
 
 -- Reciprocal rank fusion, then the best passage per article,
@@ -128,12 +126,6 @@ LEFT JOIN dbo.pmc_chunks AS next_chunk
 WHERE best.DocumentRank = 1
 ORDER BY best.Score DESC;`
 
-const databaseLabels: Record<Environment, string> = {
-  small: 'Caldova Pilot',
-  large: 'Caldova Research',
-  replica: 'Research replica',
-}
-
 const environmentButtons: Record<Environment, string> = {
   small: 'Pilot',
   large: 'Research',
@@ -152,7 +144,8 @@ function formatCount(value: number | null | undefined) {
 
 function App() {
   const [environment, setEnvironment] = useState<Environment>('small')
-  const [mode, setMode] = useState<SearchMode>('hybrid')
+  const [mode] = useState<SearchMode>('hybrid')
+  const [peerReviewedOnly, setPeerReviewedOnly] = useState(false)
   const [query, setQuery] = useState(DEMO_QUERIES[0])
   const [executedQuery, setExecutedQuery] = useState('')
   const [view, setView] = useState<ResultView>('evidence')
@@ -201,7 +194,7 @@ function App() {
       const response = await fetch(`${API_BASE_URL}/api/search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ environment, query: trimmed, mode }),
+        body: JSON.stringify({ environment, query: trimmed, mode, peerReviewedOnly }),
       })
       if (!response.ok) {
         const error = (await response.json().catch(() => ({}))) as { message?: string }
@@ -233,7 +226,6 @@ function App() {
     <div className="app-shell">
       <header className="topbar">
         <a className="brand" href="#main">
-          <span className="brand-mark"><FlaskConical size={19} /></span>
           Caldova
         </a>
         <nav className="primary-nav" aria-label="Primary navigation">
@@ -270,19 +262,24 @@ function App() {
                   </button>
                 ))}
               </div>
-              <span className="control-label">Search</span>
+              <span className="control-label">Evidence</span>
               <div className="segment-group">
-                {(['vector', 'keyword', 'hybrid'] as const).map((option) => (
-                  <button
-                    className={mode === option ? 'selected' : ''}
-                    key={option}
-                    type="button"
-                    onClick={() => setMode(option)}
-                    aria-pressed={mode === option}
-                  >
-                    {modeLabels[option]}
-                  </button>
-                ))}
+                <button
+                  className={peerReviewedOnly ? '' : 'selected'}
+                  type="button"
+                  onClick={() => setPeerReviewedOnly(false)}
+                  aria-pressed={!peerReviewedOnly}
+                >
+                  All sources
+                </button>
+                <button
+                  className={peerReviewedOnly ? 'selected' : ''}
+                  type="button"
+                  onClick={() => setPeerReviewedOnly(true)}
+                  aria-pressed={peerReviewedOnly}
+                >
+                  Peer-reviewed
+                </button>
               </div>
             </div>
           </div>
@@ -300,16 +297,6 @@ function App() {
               {isSearching ? 'Searching' : 'Search evidence'}
             </button>
           </form>
-
-          <div className="query-preset-row">
-            <span>Try</span>
-            {DEMO_QUERIES.map((preset, index) => (
-              <button type="button" key={preset} onClick={() => setQuery(preset)}>
-                {['Sleep and insulin', 'Gum disease and blood pressure', 'Microbiome and mood',
-                  'Exercise and dementia', 'Immunotherapy resistance'][index]}
-              </button>
-            ))}
-          </div>
         </section>
 
         <section className="status-band" aria-live="polite">
@@ -322,26 +309,18 @@ function App() {
           </div>
           <div className="metric-strip">
             <div className="metric">
-              <Database size={18} />
-              <span>Database<strong>{metrics?.databaseLabel ?? databaseLabels[environment]}</strong></span>
+              <FileText size={18} />
+              <span>Articles returned<strong>{evidence.length > 0 ? evidence.length : '--'}</strong></span>
             </div>
             <div className="metric">
               <BookOpen size={18} />
-              <span>Corpus<strong>{formatCount(metrics?.chunkCount ?? readiness?.chunkCount)} passages</strong></span>
+              <span>Rows searched<strong>{formatCount(metrics?.chunkCount ?? readiness?.chunkCount)}</strong></span>
             </div>
             <div className="metric featured">
               <Clock3 size={18} />
               <span>Vector search<strong>
                 {metrics?.vectorSearchMs != null ? `${metrics.vectorSearchMs.toFixed(1)} ms` : '--'}
               </strong></span>
-            </div>
-            <div className="metric">
-              <Clock3 size={18} />
-              <span>Total<strong>{metrics ? `${metrics.totalMs.toFixed(0)} ms` : '--'}</strong></span>
-            </div>
-            <div className="metric">
-              <ShieldCheck size={18} />
-              <span>Vector index<strong>{metrics?.indexStatus ?? (readiness?.indexReady ? 'Online · v3' : 'Not built')}</strong></span>
             </div>
           </div>
         </section>
@@ -374,10 +353,11 @@ function App() {
           {view === 'sql' ? (
             <div className="sql-view">
               <div className="sql-caption">
-                <div><Check size={17} /> One parameterized query for both databases</div>
-                <span>512-dimension embeddings · cosine distance</span>
+                <div><Check size={17} /> One parameterized query for every database</div>
               </div>
-              <pre><code>{SEARCH_SQL}</code></pre>
+              <pre><code>{SEARCH_SQL
+                .replace('__VECTOR_FILTER__', peerReviewedOnly ? '\n    AND chunk.is_preprint = 0' : '')
+                .replace('__KEYWORD_FILTER__', peerReviewedOnly ? '\n  AND chunk.is_preprint = 0' : '')}</code></pre>
             </div>
           ) : evidence.length > 0 && selectedEvidence ? (
             <div className="evidence-layout">
