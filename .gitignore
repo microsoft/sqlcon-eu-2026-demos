@@ -21,3 +21,5 @@ demo2-mission-critical/recording/build/
 
 # OS
 .DS_Store
+demo3-estate-running-itself/app/node_modules/
+demo3-estate-running-itself/app/dist/
