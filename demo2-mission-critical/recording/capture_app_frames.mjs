@@ -51,10 +51,22 @@ const shot = async (page, name) => {
   console.log(`captured ${name.padEnd(12)} ${wip ? '[WIP] ' : ''}${status.slice(0, 120)}`)
 }
 
+// The submit button relabels to "Searching" while a query is in flight, so every search
+// waits for the idle label before clicking and again after, rather than a fixed delay.
+const idle = (page, timeout) => page.waitForFunction(
+  () => Array.from(document.querySelectorAll('button'))
+    .some((candidate) => candidate.textContent.trim() === 'Search evidence'),
+  null,
+  { timeout },
+).catch(() => {})
+
 const search = async (page) => {
   await setQuestion(page, QUESTION)
+  await idle(page, 120_000)
   await clickByText(page, 'Search evidence')
-  await page.waitForTimeout(9000)
+  await page.waitForTimeout(1500)
+  await idle(page, 120_000)
+  await page.waitForTimeout(1500)
 }
 
 const browser = await chromium.launch()
@@ -89,14 +101,16 @@ try {
   await clickTab(page, 'SQL query')
   await shot(page, 'frame4.png')
 
-  // Beats 7 and 10: the scaled targets. They still capture whatever the app reports, and
-  // any frame that is not live is flagged for a work-in-progress banner.
+  // Beats 7 and 10: the scaled targets. Each one re-runs the question so the frame shows
+  // that target's own numbers rather than whatever the pilot left on screen.
   await clickByText(page, 'Research')
   await page.waitForTimeout(30_000)
+  await search(page)
   await shot(page, 'frame5.png')
 
   await clickByText(page, 'Replica')
   await page.waitForTimeout(30_000)
+  await search(page)
   await shot(page, 'frame6.png')
 
   // Beat 11: closing shot on a clean pilot session rather than a repeat of frame 4.

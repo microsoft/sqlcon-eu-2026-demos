@@ -305,8 +305,11 @@ app.post('/api/search', async (request, response) => {
       .input('top', sql.Int, 5)
       .input('useVector', sql.Bit, mode === 'vector' || mode === 'hybrid')
       .input('useKeyword', sql.Bit, mode === 'keyword' || mode === 'hybrid')
-      .input('peerReviewedOnly', sql.Bit, peerReviewedOnly)
-      .query<SearchRow>(SEARCH_SQL)
+      // Injected rather than parameterised: targets without the column must still compile.
+      .query<SearchRow>(SEARCH_SQL.replaceAll(
+        '/*PEER_REVIEWED_FILTER*/',
+        peerReviewedOnly ? '\n          AND chunk.is_preprint = 0' : '',
+      ))
     const databaseMs = performance.now() - queryStarted
     // Measured inside the engine, so it is the ANN search only.
     const vectorSearchMs = result.recordset[0]?.VectorSearchMs ?? null

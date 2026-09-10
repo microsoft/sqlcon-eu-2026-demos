@@ -177,6 +177,7 @@ function App() {
   const chooseEnvironment = (next: Environment) => {
     setEnvironment(next)
     setMetrics(null)
+    setReadiness(null)
     setEvidence([])
     setExecutedQuery('')
     setNotice('Database changed. Run the question again.')

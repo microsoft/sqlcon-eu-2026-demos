@@ -56,8 +56,7 @@ BEGIN
             SIMILAR_TO = @QueryVector,
             METRIC = 'COSINE'
         ) AS vector_result
-        WHERE chunk.is_boilerplate = 0
-          AND (@peerReviewedOnly = 0 OR chunk.is_preprint = 0)
+        WHERE chunk.is_boilerplate = 0/*PEER_REVIEWED_FILTER*/
         ORDER BY vector_result.distance
     ) AS ranked;
 
@@ -74,8 +73,7 @@ BEGIN
     FROM FREETEXTTABLE(dbo.pmc_chunks, text_chunk, @queryText, @candidates) AS ranked
     INNER JOIN dbo.pmc_chunks AS chunk
         ON chunk.chunk_id = ranked.[KEY]
-    WHERE chunk.is_boilerplate = 0
-      AND (@peerReviewedOnly = 0 OR chunk.is_preprint = 0)
+    WHERE chunk.is_boilerplate = 0/*PEER_REVIEWED_FILTER*/
     ORDER BY ranked.[RANK] DESC;
 END;
 
