@@ -49,6 +49,8 @@ These are not stylistic preferences. They are what keeps the demo honest on stag
   impossible.
 - The large benchmark database is read-only for this work. No index is created on it
   until its embeddings finish loading.
+- `research-replica` is a serverless named replica of that database. It shares the
+  primary's storage, so it inherits the vector index the moment the team builds it.
 
 ## Getting started
 

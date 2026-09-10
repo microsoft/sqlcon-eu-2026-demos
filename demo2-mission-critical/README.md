@@ -55,10 +55,42 @@ A named replica shares the primary's storage, so no data is copied and the corpu
 one place. It is read-only and sized independently, which is exactly what a search workload
 wants. The application statement does not change between the three.
 
-The replica is **not created yet**. It lives on a shared benchmark server in another
-subscription and adds compute cost, so it needs a decision first.
-[deploy/create-named-replica.sh](deploy/create-named-replica.sh) has the exact commands and
-the caveats, including that auto-pause does not persist in every region.
+### Replica status
+
+`research-replica` **exists and is Online**: `HS_S_Gen5_8` serverless named replica of
+`vbench_large`, min 1 vCore, on `vbnech-large-server` in East US 2. The app is configured to
+use it, and reports it as not reachable until the two items below are done.
+
+`autoPauseDelay` reads `-1` because East US 2 does not persist auto-pause. That is expected
+and does not matter here; auto-pause is demonstrated on the pilot.
+
+Two prerequisites remain, and both belong to the owner of `vbnech-large-server`
+(Entra admin `ankhedekar@microsoft.com`):
+
+1. **A network path from the app.** The Container Apps environment has around 160 rotating
+   outbound addresses, so per-IP firewall rules are not workable. Either enable
+   *Allow Azure services* on the server, or put the Container Apps environment on a VNet
+   behind a NAT gateway and allow that single address. The second is narrower and is the
+   better answer if there is time.
+
+2. **A database user for the app identity.** A named replica is read-only, so the user
+   cannot be created on the replica. It has to be created on the **primary**, where it then
+   replicates:
+
+   ```sql
+   -- On vbench_large, by the server's Entra administrator
+   CREATE USER [caldova-workload-id] FROM EXTERNAL PROVIDER;
+   ALTER ROLE db_datareader ADD MEMBER [caldova-workload-id];
+   ```
+
+Once the team finishes loading embeddings and builds the vector index on the primary, that
+index appears on the replica through shared storage and the Replica target starts working
+with no application change.
+
+[deploy/create-named-replica.sh](deploy/create-named-replica.sh) records how the replica was
+created. Note that `az sql db replica create` cannot make a serverless named replica: it
+demands `-e` for a serverless SKU and then rejects `-e` as unrecognised, so the script uses
+an ARM REST call.
 
 ## Layout
 
