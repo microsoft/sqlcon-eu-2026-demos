@@ -1,0 +1,23 @@
+# Dependencies and build output
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Local environment
+.env
+.env.local
+.env.*.local
+
+# Recording working files (regenerate with the scripts in recording/)
+demo2-mission-critical/recording/frames/
+demo2-mission-critical/recording/audio/
+demo2-mission-critical/recording/build/
+
+# OS
+.DS_Store

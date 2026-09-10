@@ -1,0 +1,150 @@
+{
+  "format": "pmc-curated-v1",
+  "source": {
+    "server": "vbnech-large-server.database.windows.net",
+    "database": "vbench_large"
+  },
+  "embedding": {
+    "model": "minishlab/potion-base-32M",
+    "runtime": "model2vec",
+    "runtimeVersion": "0.9.0",
+    "dimensions": 512,
+    "dtype": "float32",
+    "normalized": true,
+    "note": "Embeddings are copied verbatim from the source database; nothing is re-encoded here."
+  },
+  "documents": {
+    "path": "Documents.jsonl",
+    "rows": 44,
+    "bytes": 7694,
+    "sha256": "a2dd404982ade1bafae773524757fa4a45c79f2ae6312d983b7194ace599fb63"
+  },
+  "chunks": {
+    "path": "Chunks.jsonl",
+    "rows": 4076,
+    "bytes": 29900198,
+    "sha256": "d50fe5f8e18cebd4fd45c46eb47b804bdc6fb6f919488372c7364e62a9eba1a9"
+  },
+  "coverage": [
+    {
+      "question": "How does chronic sleep disruption contribute to insulin resistance and impaired glucose regulation in adults?",
+      "documents": [
+        9307,
+        15869,
+        30839
+      ]
+    },
+    {
+      "question": "What biological mechanisms connect periodontal inflammation with elevated blood pressure and cardiovascular risk?",
+      "documents": [
+        1020158,
+        1255280,
+        1552055
+      ]
+    },
+    {
+      "question": "Does improving maternal nutrition during pregnancy reduce impaired fetal growth and adverse birth outcomes?",
+      "documents": [
+        1693,
+        2337,
+        5262
+      ]
+    },
+    {
+      "question": "How does prolonged exposure to air pollution affect cognitive decline and dementia risk in older adults?",
+      "documents": [
+        9924,
+        57882,
+        170743
+      ]
+    },
+    {
+      "question": "What factors explain why obesity increases the risk of severe respiratory infection?",
+      "documents": [
+        1599349,
+        1824897,
+        2280717
+      ]
+    },
+    {
+      "question": "How does disruption of the intestinal microbiome influence anxiety and depressive symptoms?",
+      "documents": [
+        77055,
+        77825,
+        130053
+      ]
+    },
+    {
+      "question": "Can physical activity slow functional and cognitive deterioration in people with neurodegenerative disease?",
+      "documents": [
+        43377,
+        95447,
+        162777
+      ]
+    },
+    {
+      "question": "Why are children exposed to repeated intestinal infections more likely to experience poor linear growth?",
+      "documents": [
+        1743,
+        17583,
+        19872
+      ]
+    },
+    {
+      "question": "How does social isolation affect mortality and cardiovascular health among older people?",
+      "documents": [
+        17623,
+        346763,
+        729863
+      ]
+    },
+    {
+      "question": "What mechanisms connect chronic psychological stress with increased susceptibility to infectious disease?",
+      "documents": [
+        298150,
+        343273,
+        370838
+      ]
+    },
+    {
+      "question": "Does treatment of chronic inflammatory disease reduce the subsequent risk of cardiovascular events?",
+      "documents": [
+        43197,
+        55178,
+        59641
+      ]
+    },
+    {
+      "question": "How does antibiotic exposure early in life influence later allergic or metabolic disease?",
+      "documents": [
+        43246,
+        71676,
+        109902
+      ]
+    },
+    {
+      "question": "Why do some cancer patients fail to respond to immune-based treatment despite initially showing tumor regression?",
+      "documents": [
+        8822,
+        9365,
+        14795
+      ]
+    },
+    {
+      "question": "How does limited access to nutritious food contribute to both obesity and micronutrient deficiency?",
+      "documents": [
+        17584,
+        88977,
+        107196
+      ]
+    },
+    {
+      "question": "What maternal, household, and environmental conditions contribute jointly to childhood undernutrition?",
+      "documents": [
+        227466,
+        240849,
+        240850
+      ]
+    }
+  ]
+}

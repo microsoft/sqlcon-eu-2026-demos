@@ -1,0 +1,48 @@
+/*
+    Choose a query from dbo.DemoQuery, then run version 3 DiskANN search.
+    Change only @DemoQueryId to demonstrate a different topic.
+*/
+
+SET NOCOUNT ON;
+
+SELECT DemoQueryId,
+       QueryName,
+       QueryText
+FROM dbo.DemoQuery
+WHERE IsActive = 1
+ORDER BY DemoQueryId;
+
+DECLARE @DemoQueryId INT = 1;
+DECLARE @QueryVector VECTOR(384);
+
+SELECT @QueryVector = QueryVector
+FROM dbo.DemoQuery
+WHERE DemoQueryId = @DemoQueryId
+  AND IsActive = 1;
+
+IF @QueryVector IS NULL
+    THROW 51000, 'Select an active DemoQueryId from the first result set.', 1;
+
+SELECT TOP (10) WITH APPROXIMATE
+       demo_query.QueryName,
+       article.PmcId,
+       article.ArticleTitle,
+       passage_content.PassageText,
+       vector_result.distance AS CosineDistance
+FROM VECTOR_SEARCH
+(
+    TABLE = dbo.PassageVector AS passage_vector,
+    COLUMN = Embedding,
+    SIMILAR_TO = @QueryVector,
+    METRIC = 'COSINE'
+) AS vector_result
+INNER JOIN dbo.ArticlePassage AS article_passage
+    ON article_passage.ArticlePassageId =
+       passage_vector.CanonicalArticlePassageId
+INNER JOIN dbo.Article AS article
+    ON article.ArticleId = article_passage.ArticleId
+INNER JOIN dbo.PassageContent AS passage_content
+    ON passage_content.PassageId = passage_vector.PassageId
+INNER JOIN dbo.DemoQuery AS demo_query
+    ON demo_query.DemoQueryId = @DemoQueryId
+ORDER BY vector_result.distance;

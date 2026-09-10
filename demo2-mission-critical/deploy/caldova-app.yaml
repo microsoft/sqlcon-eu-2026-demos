@@ -1,0 +1,53 @@
+location: westcentralus
+identity:
+  type: UserAssigned
+  userAssignedIdentities:
+    ? /subscriptions/fa58cf66-caaf-4ba9-875d-f310d3694845/resourcegroups/antho-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/caldova-workload-id
+    : {}
+properties:
+  managedEnvironmentId: /subscriptions/fa58cf66-caaf-4ba9-875d-f310d3694845/resourceGroups/antho-rg/providers/Microsoft.App/managedEnvironments/caldova-env
+  configuration:
+    activeRevisionsMode: Single
+    ingress:
+      external: true
+      targetPort: 8000
+      transport: auto
+      allowInsecure: false
+      traffic:
+        - latestRevision: true
+          weight: 100
+    registries:
+      - server: antocaldovaacr.azurecr.io
+        identity: /subscriptions/fa58cf66-caaf-4ba9-875d-f310d3694845/resourcegroups/antho-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/caldova-workload-id
+  template:
+    containers:
+      # The API and the embedding service share a replica so they talk over loopback.
+      - name: caldova-app
+        image: antocaldovaacr.azurecr.io/caldova-app:v3
+        resources:
+          cpu: 1.0
+          memory: 2Gi
+        env:
+          - name: AZURE_SQL_SMALL_SERVER
+            value: antho-caldova.database.windows.net
+          - name: AZURE_SQL_SMALL_DATABASE
+            value: research
+          - name: AZURE_CLIENT_ID
+            value: e3db9235-290a-4e68-b3d2-6de46a73fd30
+          - name: EMBEDDING_SERVICE_URL
+            value: http://127.0.0.1:8081
+          - name: HOST
+            value: 0.0.0.0
+          - name: PORT
+            value: "8000"
+      - name: caldova-embedding
+        image: antocaldovaacr.azurecr.io/caldova-embedding:v1
+        resources:
+          cpu: 1.0
+          memory: 2Gi
+        env:
+          - name: PORT
+            value: "8081"
+    scale:
+      minReplicas: 1
+      maxReplicas: 2
