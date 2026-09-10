@@ -118,7 +118,7 @@ h1 {
   letter-spacing: 0;
 }
 
-.environment-control { min-width: 276px; }
+.environment-control { min-width: 312px; }
 .control-label {
   display: block;
   margin-bottom: 7px;
@@ -130,7 +130,7 @@ h1 {
 }
 .segment-group {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   padding: 4px;
   background: #e3e8e4;
   border-radius: 7px;

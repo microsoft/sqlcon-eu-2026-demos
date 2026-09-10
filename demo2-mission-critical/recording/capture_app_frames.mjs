@@ -32,10 +32,21 @@ const setQuestion = (page, text) => page.evaluate((value) => {
   input.dispatchEvent(new Event('input', { bubbles: true }))
 }, text)
 
+// The band is the honesty check: it must never show a number the demo cannot back up.
+const band = (page) => page.evaluate(
+  () => document.querySelector('.status-band')?.textContent?.trim().replace(/\s+/g, ' ') ?? '')
+
 const shot = async (page, name) => {
   await page.waitForTimeout(700)
+  await page.evaluate(() => window.scrollTo(0, 0))
   await page.screenshot({ path: path.join(frames, name) })
-  console.log(`captured ${name}`)
+  console.log(`captured ${name.padEnd(12)} ${(await band(page)).slice(0, 120)}`)
+}
+
+const search = async (page) => {
+  await setQuestion(page, QUESTION)
+  await clickByText(page, 'Search evidence')
+  await page.waitForTimeout(9000)
 }
 
 const browser = await chromium.launch()
@@ -46,44 +57,43 @@ try {
   await page.goto(appUrl, { waitUntil: 'networkidle', timeout: 90_000 })
   await page.waitForTimeout(2500)
 
-  await setQuestion(page, QUESTION)
-  await clickByText(page, 'Search evidence')
-  await page.waitForTimeout(8000)
-
+  // Beat 1-3: the pilot answering a real question with vector search.
+  // Hybrid is the app default, so the opening beats have to select vector explicitly.
+  await clickByText(page, 'Vector')
+  await search(page)
   await clickTab(page, 'SQL query')
   await shot(page, 'frame1.png')
 
   await clickTab(page, 'Evidence')
   await shot(page, 'frame2.png')
 
-  // Frame 3 shows the search-mode control and an opened result.
   await page.evaluate(() => {
     const first = Array.from(document.querySelectorAll('button'))
       .find((c) => c.textContent.trim().startsWith('02 PMC'))
     first?.click()
-    window.scrollTo(0, 0)
   })
   await shot(page, 'frame3.png')
 
-  await clickByText(page, 'Research')
-  await page.waitForTimeout(3500)
+  // Beat 4: hybrid fuses vector and keyword, so it gets its own frame.
+  await clickByText(page, 'Hybrid')
+  await search(page)
+  await clickTab(page, 'Evidence')
   await shot(page, 'frame4.png')
 
-  await clickByText(page, 'Pilot')
+  // Beat 5-6: the two targets that are not ready, with timings deliberately blank.
+  await clickByText(page, 'Research')
+  await page.waitForTimeout(4000)
+  await shot(page, 'frame5.png')
+
+  await clickByText(page, 'Replica')
+  await page.waitForTimeout(4000)
+  await shot(page, 'frame6.png')
+
+  // Beat 7: closing shot on a clean pilot session rather than a repeat of frame 4.
+  await page.goto(appUrl, { waitUntil: 'networkidle', timeout: 90_000 })
   await page.waitForTimeout(3000)
   await setQuestion(page, QUESTION)
-  await clickByText(page, 'Search evidence')
-  await page.waitForTimeout(8000)
-
-  await clickTab(page, 'SQL query')
-  await shot(page, 'frame5.png')
-  await clickTab(page, 'Evidence')
-  await shot(page, 'frame6.png')
-  await page.evaluate(() => window.scrollTo(0, 0))
   await shot(page, 'frame7.png')
-
-  const band = await page.evaluate(() => document.querySelector('.status-band')?.textContent?.trim() ?? '')
-  console.log('status band:', band.slice(0, 180))
 } finally {
   await browser.close()
 }

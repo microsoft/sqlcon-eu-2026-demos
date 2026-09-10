@@ -28,30 +28,33 @@ BEATS = [
                    "influence anxiety and depressive symptoms? Nothing in that sentence is a keyword "
                    "match. The embeddings do the work, and every answer comes back tied to the article "
                    "it came from."),
-    ("frame3.png", "You can switch how it searches. Vector on its own, keyword on its own, or hybrid, "
-                   "which fuses both. Keyword still wins on rare terms, so we run them together. And "
-                   "each result brings the passages either side of it, so the quote actually reads."),
+    ("frame3.png", "Each result brings the passages either side of it, so the quote actually reads in "
+                   "context instead of stopping mid-sentence."),
+    ("frame4.png", "You can also change how it searches. Vector on its own, keyword on its own, or "
+                   "hybrid, which fuses both and re-ranks them together. Keyword still wins on rare "
+                   "terms, so we run them side by side. And that timing is the vector search itself, "
+                   "measured inside the engine, not the round trip."),
     ("portal1.png", "Here's the part I like. This is Hyperscale serverless. It scales down to half a "
                     "vCore, and after an hour of nobody asking it anything, it pauses and you stop paying "
                     "for compute. The next query wakes it back up."),
     ("portal2.png", "And this is what the usage actually looks like. Short bursts, long quiet gaps. Those "
                     "flat stretches are the whole point. I have a job hitting it every three hours, so we "
                     "can watch it pause and resume for real."),
-    ("frame4.png", "Now watch what happens when I point the same app at the big database. Same query, "
-                   "same vectors, same schema. Only the connection changes. Right now it says not ready, "
-                   "and the timings are blank on purpose. The index isn't built yet, so Caldova won't show "
-                   "you a number it can't back up."),
+    ("frame5.png", "Now watch what happens when I point the same app at the big database. Same query, "
+                   "same vectors, same schema. Only the connection changes. Right now it isn't ready, and "
+                   "the timings are blank on purpose. Caldova won't show you a number it can't back up."),
     ("portal3.png", "That database is a different animal. A hundred and ninety-two vCores and almost five "
                     "terabytes, next to the pilot's two."),
-    ("portal4.png", "Its corpus is already past three hundred million passages, and it grows while you "
-                    "watch. The team is still loading embeddings on the way to a billion rows. That's why "
-                    "there's no vector index on it yet."),
-    ("frame5.png", "When it is ready, the same query runs there too. Same statement, same embedding "
-                   "model, same index. Only the connection string changes."),
-    ("frame6.png", "So that's the idea. Start with the smallest thing that works. Keep the contract steady "
-                   "while the data grows. You shouldn't have to rebuild your app just because your corpus "
-                   "did."),
-    ("frame7.png", "Start small. Scale without re-architecting."),
+    ("portal4.png", "Its corpus is past four hundred million passages across five and a half million "
+                    "articles, and it grows while you watch. The team is still loading embeddings on the "
+                    "way to a billion rows. That's why there's no vector index on it yet."),
+    ("frame6.png", "So here's how we get there without touching their workload. A serverless named "
+                   "replica, sharing the same storage, reading the same rows. Its own compute, so the "
+                   "loading job never feels us. It's created and wired in. It's waiting on access, which "
+                   "is exactly what it says."),
+    ("frame7.png", "Start small. Keep the contract steady while the data grows. You shouldn't have to "
+                   "rebuild your app just because your corpus did. Start small. Scale without "
+                   "re-architecting."),
 ]
 
 

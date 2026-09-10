@@ -271,7 +271,7 @@ def render_large_scale() -> None:
                    GROUP BY t.name;"""
             ).fetchall()
         }
-        sidecar = cursor.execute("SELECT OBJECT_ID('dbo.CaldovaPotionEmbedding');").fetchone()[0]
+        sidecar = cursor.execute("SELECT OBJECT_ID('dbo.pmc_chunks');").fetchone()[0]
 
     pmc_chunks = counts.get("pmc_chunks", 0)
     pmc_documents = counts.get("pmc_documents", 0)
@@ -284,9 +284,9 @@ def render_large_scale() -> None:
     kv_rows(axes, 0.057, 0.755, [
         ("dbo.pmc_chunks", f"{pmc_chunks:,} rows", ACCENT),
         ("dbo.pmc_documents", f"{pmc_documents:,} rows", None),
-        ("Potion sidecar", "Not created yet" if sidecar is None else "Present", AMBER),
-        ("Potion vector index", "Not created yet" if sidecar is None else "Present", AMBER),
-        ("Status", "Embeddings still loading toward one billion rows", AMBER),
+        ("Embeddings", "Loading", AMBER),
+        ("Vector index", "Not created yet", AMBER),
+        ("Status", "On the way to one billion rows", AMBER),
     ], label_w=0.30)
 
     panel(axes, 0.035, 0.12, 0.925, 0.30, "The same contract, at a different scale")
