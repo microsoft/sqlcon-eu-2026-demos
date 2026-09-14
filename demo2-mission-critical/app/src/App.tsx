@@ -104,8 +104,28 @@ INNER JOIN dbo.pmc_chunks AS chunk
 WHERE chunk.is_boilerplate = 0__KEYWORD_FILTER__
 ORDER BY ranked.[RANK] DESC;
 
--- Reciprocal rank fusion, then the best passage per article,
--- returned with the chunks either side for context.
+-- Fuse vector and full-text positions with reciprocal rank fusion.
+WITH Fused AS (
+  SELECT candidate.document_id, candidate.chunk_number,
+    SUM(1.0 / (60.0 + candidate.Position)) AS Score,
+    MIN(candidate.Distance) AS Distance
+  FROM (
+    SELECT document_id, chunk_number, Position, Distance
+    FROM @VectorCandidates
+    UNION ALL
+    SELECT document_id, chunk_number, Position, NULL
+    FROM @KeywordCandidates
+  ) AS candidate
+  GROUP BY candidate.document_id, candidate.chunk_number
+),
+BestPerDocument AS (
+  SELECT document_id, chunk_number, Score, Distance,
+    ROW_NUMBER() OVER (
+      PARTITION BY document_id
+      ORDER BY Score DESC, chunk_number
+    ) AS DocumentRank
+  FROM Fused
+)
 SELECT TOP (@top)
   CONCAT('PMC', document.pmcid) AS PmcId,
   document.title, chunk.text_chunk AS Passage,
