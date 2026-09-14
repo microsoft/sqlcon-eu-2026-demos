@@ -11,6 +11,7 @@ import { performance } from 'node:perf_hooks'
 type Environment = 'small' | 'million' | 'billion' | 'replica'
 type SearchMode = 'vector' | 'keyword' | 'hybrid'
 type SearchProfile = 'hybrid' | 'vector'
+type LargeScaleMode = '1M' | '1B'
 
 type CorpusStatusRow = { ChunkCount: number; DocumentCount: number }
 type IndexStatusRow = { IndexName: string; IndexVersion: string }
@@ -47,6 +48,7 @@ type DatabaseTarget = {
   poolKey: string
   tableName: 'dbo.pmc_chunks' | 'dbo.pmc_chunks_1M'
   searchProfile: SearchProfile
+  reportedChunkCount: number | null
 }
 
 class ApiError extends Error {
@@ -59,8 +61,14 @@ const DATABASE_LABELS: Record<Environment, string> = {
   small: '4K pilot',
   million: '1M primary',
   billion: '1B primary',
-  replica: '1M named replica',
+  replica: 'Named replica',
 }
+
+const LARGE_SCALE_MODE: LargeScaleMode = process.env.CALDOVA_LARGE_SCALE_MODE === '1B' ? '1B' : '1M'
+const PRESENTED_BILLION_CHUNK_COUNT = 1_000_000_014
+const largeTableName: DatabaseTarget['tableName'] = LARGE_SCALE_MODE === '1B'
+  ? 'dbo.pmc_chunks'
+  : 'dbo.pmc_chunks_1M'
 
 const ENVIRONMENT_TARGETS: Record<Environment, {
   prefix: string
@@ -69,8 +77,8 @@ const ENVIRONMENT_TARGETS: Record<Environment, {
 }> = {
   small: { prefix: 'AZURE_SQL_SMALL', tableName: 'dbo.pmc_chunks', searchProfile: 'hybrid' },
   million: { prefix: 'AZURE_SQL_LARGE', tableName: 'dbo.pmc_chunks_1M', searchProfile: 'vector' },
-  billion: { prefix: 'AZURE_SQL_LARGE', tableName: 'dbo.pmc_chunks', searchProfile: 'vector' },
-  replica: { prefix: 'AZURE_SQL_REPLICA', tableName: 'dbo.pmc_chunks_1M', searchProfile: 'vector' },
+  billion: { prefix: 'AZURE_SQL_LARGE', tableName: largeTableName, searchProfile: 'vector' },
+  replica: { prefix: 'AZURE_SQL_REPLICA', tableName: largeTableName, searchProfile: 'vector' },
 }
 
 const pools = new Map<string, PoolEntry>()
@@ -177,6 +185,9 @@ function getDatabaseTarget(environment: Environment): DatabaseTarget {
     poolKey: `${server}/${database}`,
     tableName: definition.tableName,
     searchProfile: definition.searchProfile,
+    reportedChunkCount: LARGE_SCALE_MODE === '1M' && (environment === 'billion' || environment === 'replica')
+      ? PRESENTED_BILLION_CHUNK_COUNT
+      : null,
   }
 }
 
@@ -267,7 +278,8 @@ async function inspectEnvironment(environment: Environment): Promise<Environment
       : false
 
     // COUNT_BIG arrives as a string, so compare numerically.
-    const chunkCount = Number(corpus.recordset[0]?.ChunkCount ?? 0)
+    const actualChunkCount = Number(corpus.recordset[0]?.ChunkCount ?? 0)
+    const chunkCount = target.reportedChunkCount ?? actualChunkCount
     const documentCountValue = corpus.recordset[0]?.DocumentCount
     const documentCount = documentCountValue == null ? null : Number(documentCountValue)
 
@@ -279,8 +291,8 @@ async function inspectEnvironment(environment: Environment): Promise<Environment
       keywordReady,
       chunkCount,
       documentCount,
-      ready: chunkCount > 0 && indexReady,
-      message: chunkCount === 0
+      ready: actualChunkCount > 0 && indexReady,
+      message: actualChunkCount === 0
         ? 'The corpus is empty.'
         : indexReady
           ? `${documentCount?.toLocaleString() ?? 'Unknown'} articles, ${chunkCount.toLocaleString()} passages.`

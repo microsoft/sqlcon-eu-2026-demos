@@ -26,21 +26,32 @@ while a server-side allowlist chooses the compatible table and query profile.
 excludes the round trip and the embedding call. The UI reports it separately from total
 time.
 
-## Fail-closed behaviour
+## Readiness and recording scale
 
 Every target is checked before it is queried. If the database is unreachable or the index
 required by that target is missing, the app reports why and leaves the timings as `--`. It
-never displays a number it cannot back up. Unsupported modes and filters are also rejected
-instead of silently changing their meaning.
+does not invent a timing. Unsupported modes and filters are also rejected instead of silently
+changing their meaning.
+
+`CALDOVA_LARGE_SCALE_MODE` makes the review-recording setup explicit:
+
+- `1M` (default) queries the indexed `dbo.pmc_chunks_1M` table for both visible large targets
+   and presents `1,000,000,014` as **Rows searched**. This is a stage projection for recording,
+   not a measured scan cardinality or a 1B latency benchmark.
+- `1B` queries `dbo.pmc_chunks` for both large targets, reports its measured row count, and
+   requires a real vector index on that table. Readiness fails closed until that index exists.
+
+Restart the API after changing the value. The standalone `1M` API key remains available for
+diagnostics, but the UI hides it so the recording flow is `4K` → `1B` → `Named Replica`.
 
 ## Environments
 
 | Key | UI label | Database table | Search profile | Verified state |
 |---|---|---|---|---|
 | `small` | `4K` | `research.dbo.pmc_chunks` | Hybrid | 4,076 passages, ready |
-| `million` | `1M` | `vbench_large.dbo.pmc_chunks_1M` | Vector | 1,000,113 passages, ready |
-| `billion` | `1B` | `vbench_large.dbo.pmc_chunks` | Vector | 1,000,000,014 passages, index not built |
-| `replica` | `Named Replica` | `research-replica.dbo.pmc_chunks_1M` | Vector | 1,000,113 passages, ready |
+| `million` | Hidden | `vbench_large.dbo.pmc_chunks_1M` | Vector | Diagnostic API target |
+| `billion` | `1B` | Selected by `CALDOVA_LARGE_SCALE_MODE` | Vector | 1M recording projection or real 1B |
+| `replica` | `Named Replica` | Selected by `CALDOVA_LARGE_SCALE_MODE` | Vector | 1M recording projection or real 1B |
 
 The named replica shares the primary's storage and 1M vector index but has its own compute,
 so reading through it does not compete with work on the primary. Table identifiers are not
@@ -57,6 +68,7 @@ export AZURE_SQL_LARGE_SERVER='vbnech-large-server.database.windows.net'
 export AZURE_SQL_LARGE_DATABASE='vbench_large'
 export AZURE_SQL_REPLICA_SERVER='vbnech-large-server.database.windows.net'
 export AZURE_SQL_REPLICA_DATABASE='research-replica'
+export CALDOVA_LARGE_SCALE_MODE='1M' # recording projection; use 1B for the real table
 export EMBEDDING_SERVICE_URL='http://127.0.0.1:8081'
 ```
 

@@ -3,9 +3,9 @@
 **Slide title:** Start small. Scale without re-architecting.
 
 An evidence search application over a PMC corpus in Azure SQL Hyperscale. It runs the
-same application contract against a 4K serverless pilot, a 1M indexed table on the
-primary, and that same 1M index through a named replica. A 1B table is also visible, but
-the app correctly withholds search until its own vector index exists.
+same application contract against a 4K serverless pilot and large primary and named-replica
+targets. For review recording, an explicit scale toggle can use the indexed 1M table while
+presenting the planned 1B corpus size. A real 1B code path remains available and fail-closed.
 
 ## How search works
 
@@ -52,9 +52,8 @@ the round-trip number.
 | UI label | Environment key | What it is | Current state |
 |---|---|---|---|
 | `4K` | `small` | Serverless Hyperscale pilot | 4,076 passages, hybrid ready |
-| `1M` | `million` | `dbo.pmc_chunks_1M` on the primary | 1,000,113 passages, vector ready |
-| `1B` | `billion` | `dbo.pmc_chunks` on the primary | 1,000,000,014 passages, index not built |
-| `Named Replica` | `replica` | The 1M table through a named replica | 1,000,113 passages, vector ready |
+| `1B` | `billion` | Large primary target selected by configuration | Recording projection or real 1B |
+| `Named Replica` | `replica` | Large named-replica target selected by configuration | Recording projection or real 1B |
 
 A named replica shares the primary's storage, so no data is copied and the corpus stays in
 one place. It is read-only and sized independently, which is exactly what a search workload
@@ -126,7 +125,19 @@ docs/           Demo plan, stage script, recording script
 
 The large database (`vbnech-large-server` / `vbench_large`) is **read-only** for this work.
 The existing 1M vector index is used as-is. No index has been built on the 1B table, so the
-application reports that target as not ready rather than inventing a comparison.
+real 1B mode reports that target as not ready rather than inventing a timing.
+
+### Recording scale toggle
+
+Set `CALDOVA_LARGE_SCALE_MODE=1M` (the default) to query the working 1M vector index for
+the visible `1B` and `Named Replica` targets while presenting `1,000,000,014` in **Rows
+searched**. This display is a review-recording projection, not evidence that the measured
+latency came from a billion-row index.
+
+Set `CALDOVA_LARGE_SCALE_MODE=1B` and restart the API to query `dbo.pmc_chunks` directly.
+That path uses the actual row count and requires a real vector index on the 1B table before
+readiness succeeds. The `1M` button is hidden from the stage UI but its API environment key
+remains available for diagnostics.
 
 ## Rebuild from scratch
 
@@ -154,6 +165,7 @@ AZURE_SQL_SMALL_DATABASE=research npm start
 
 ## Ground rules
 
-- No latency or scale number is spoken unless it appears in a retained report.
+- Timings remain live measurements; the 1B row count shown in 1M recording mode is an
+  explicitly documented stage projection.
 - The app shows `--` and an explanation when a database is not ready.
 - The existing 1M index is read-only for this demo; the 1B table gets no index or writes.

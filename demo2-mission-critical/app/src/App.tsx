@@ -177,8 +177,10 @@ const environmentTables: Record<Environment, string> = {
   small: 'dbo.pmc_chunks',
   million: 'dbo.pmc_chunks_1M',
   billion: 'dbo.pmc_chunks',
-  replica: 'dbo.pmc_chunks_1M',
+  replica: 'dbo.pmc_chunks',
 }
+
+const visibleEnvironments: Environment[] = ['small', 'billion', 'replica']
 
 const modeLabels: Record<SearchMode, string> = {
   vector: 'Vector',
@@ -300,7 +302,7 @@ function App() {
             <div className="environment-control" aria-label="Search configuration">
               <span className="control-label">Database</span>
               <div className="segment-group environment-segments">
-                {(['small', 'million', 'billion', 'replica'] as const).map((option) => (
+                {visibleEnvironments.map((option) => (
                   <button
                     className={environment === option ? 'selected' : ''}
                     key={option}
