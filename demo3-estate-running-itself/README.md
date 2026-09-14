@@ -9,6 +9,9 @@ This folder is a starting point, not a finished demo. It gives you an applicatio
 looks like the demo 2 app, a database with a realistic anti-pattern, and the queries that
 make the cause visible in SSMS.
 
+Patrick: start with [docs/patrick-handoff.md](docs/patrick-handoff.md) for the current
+stage path, rehearsal gates, and the decisions that still need the team's input.
+
 ## What the app is
 
 `app/` is the same product as demo 2 in a different view. Demo 2 is the evidence search

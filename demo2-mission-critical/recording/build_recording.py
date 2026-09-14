@@ -33,49 +33,45 @@ WIP_TEXT = "WORK IN PROGRESS  \u00b7  THIS SCREEN IS NOT LIVE YET"
 
 # Each beat pairs one narration block with the frame it is spoken over.
 BEATS = [
-    ("frame1.png", "Start small. Scale without re-architecting. This is Caldova, a biomedical evidence "
-                   "explorer, and it runs on Azure SQL Hyperscale. Every article is chunked into "
-                   "passages, every passage is embedded, and a vector index sits over all of them. "
-                   "Underneath the whole app there is one SQL query, and that query doesn't change when "
-                   "the database does."),
+    ("frame1.png", "Let's look at how you can start small and scale without re-architecting with "
+                   "Azure SQL Hyperscale. This is Caldova, a biomedical evidence explorer, and it "
+                   "runs on Hyperscale. Every article is chunked into passages, every passage is "
+                   "embedded, and a vector index sits over all of them. Underneath the whole app "
+                   "there is one SQL query, and that query doesn't change when the database does."),
     ("frame2.png", "Let's ask it something real. How does disruption of the intestinal microbiome "
                    "influence anxiety and depressive symptoms? Nothing in that sentence is a keyword "
                    "match. The meaning is what gets searched, and every answer comes back tied to the "
                    "article it came from."),
     ("frame3.png", "Each result brings the passages either side of it, so the quote actually reads in "
                    "context instead of stopping mid-sentence."),
-    ("frame4.png", "So how did that actually run? Three ways to search, and this was hybrid. Vector "
-                   "search finds meaning. Keyword search finds the exact string, which is what you want "
-                   "for a gene name or a drug code, the rare terms embeddings tend to blur. Hybrid runs "
-                   "both and fuses the two rankings together, which is why those results had the "
-                   "concept matches and the precise ones. And because this is all just SQL, the filter "
-                   "goes inside the search. There's one right there, dropping boilerplate sections "
-                   "before they ever compete for a slot. Journal, publication date, study type, "
-                   "anything in the row next to the vector works the same way. SQL applies those "
-                   "predicates during the vector search instead of after it, so a narrow filter still "
-                   "comes back full of good matches rather than quietly dropping them. And that timing "
-                   "is the vector search itself, measured inside the engine."),
-    ("portal1.png", "Here's the part I like. This is Hyperscale serverless. It scales down to half a "
-                    "vCore, and when nobody is searching, it pauses. If the app isn't being used, I'm "
-                    "not paying for compute. The next question brings it straight back."),
+    ("frame4.png", "So how did that run? This was hybrid. Vector search finds meaning. Keyword "
+                   "search finds the exact string, which is what you want for a gene name or a drug "
+                   "code. SQL fuses the two rankings together. And the filters run inside the vector "
+                   "search rather than after it, so narrowing the evidence doesn't quietly throw away "
+                   "the best matches. That timing is the vector search itself, measured inside the "
+                   "engine."),
+    ("portal1.png", "Here's the part I like. We're just getting started, so this is Hyperscale "
+                    "serverless, which now auto-pauses. It scales down to half a vCore, and when "
+                    "nobody is searching, it pauses. If the app isn't being used, I'm not getting "
+                    "billed for compute."),
     ("portal2.png", "And this is what real usage looks like. Short bursts, long quiet gaps. Those flat "
                     "stretches are the whole point, because the quiet time costs me nothing."),
-    ("frame5.png", "Now the scenario moves on. The research grew. Same app, same query, same schema, "
-                   "same vector index definition. I just point it at the production corpus, and look at "
-                   "how many rows the search is now running across."),
-    ("portal3.png", "That database is a different animal. A hundred and ninety-two vCores and almost "
-                    "five terabytes, next to the pilot's two."),
-    ("portal4.png", "It's past a billion passages across millions of articles, and it's still growing. "
-                    "The vector index never had to be rebuilt to get here. Same index, same query, just "
-                    "far more rows behind it."),
+    ("frame5.png", "Now fast forward. The business grows. Same app, same query, same schema, same "
+                   "vector index. I point it at the production corpus and run the same search."),
+    ("portal3.png", "This one is a different animal. A hundred and ninety-two vCores and nearly seven "
+                    "terabytes of data, next to the pilot's two vCores."),
+    ("portal4.png", "Six hundred and sixty-nine million passages across nine million articles, and "
+                    "it's still growing, on its way to a billion rows. The vector index never had to "
+                    "be rebuilt to get here. Same index, same query, far more rows behind it, and the "
+                    "search is just as fast."),
     ("frame6.png", "And because search is read only, I can keep it completely separate with a "
                     "Hyperscale named replica. This is read scale-out on the fly. It uses the same page "
                     "servers as the primary, so there's no data copy, and it comes up in about a "
                     "minute. It gets its own compute, sized independently, so the ingestion workload on "
                     "the primary never feels my queries. You can run up to thirty of them."),
-    ("frame7.png", "Start small. Keep the contract steady while the data grows. You shouldn't have to "
-                   "rebuild your app just because your corpus did. That's Hyperscale. Start small, and "
-                   "scale without re-architecting."),
+    ("frame7.png", "Start small. Grow big. Keep the contract steady while the data grows. You "
+                   "shouldn't have to rebuild your app just because your corpus did. That's "
+                   "Hyperscale."),
 ]
 
 
