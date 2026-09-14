@@ -237,7 +237,7 @@ function App() {
       setExecutedQuery(trimmed)
       setNotice(
         payload.evidence.length > 0
-          ? `${modeLabels[payload.mode]} search returned ${payload.evidence.length} articles.`
+          ? `Search returned ${payload.evidence.length} articles using the vector index.`
           : 'No articles matched that question.',
       )
     } catch (error) {
