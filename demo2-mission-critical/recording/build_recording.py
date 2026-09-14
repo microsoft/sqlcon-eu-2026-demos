@@ -37,7 +37,7 @@ BEATS = [
                    "Azure SQL Hyperscale. This is Caldova, a biomedical evidence explorer, and it "
                    "runs on Hyperscale. Every article is chunked into passages, every passage is "
                    "embedded, and a vector index sits over all of them. Underneath the whole app "
-                   "there is one SQL query, and that query doesn't change when the database does."),
+                   "there is one search contract, and that contract stays steady when the database does."),
     ("frame2.png", "Let's ask it something real. How does disruption of the intestinal microbiome "
                    "influence anxiety and depressive symptoms? Nothing in that sentence is a keyword "
                    "match. The meaning is what gets searched, and every answer comes back tied to the "
@@ -56,19 +56,20 @@ BEATS = [
                     "billed for compute."),
     ("portal2.png", "And this is what real usage looks like. Short bursts, long quiet gaps. Those flat "
                     "stretches are the whole point, because the quiet time costs me nothing."),
-    ("frame5.png", "Now fast forward. The business grows. Same app, same query, same schema, same "
-                   "vector index. I point it at the production corpus and run the same search."),
+    ("frame5.png", "Now fast forward. The business grows. I point the same app at one million "
+                   "passages on the primary and run the same search. The embedding model, vector "
+                   "dimensions, distance metric, and result contract stay fixed. This path uses the "
+                   "existing DiskANN index on the one-million-row table."),
     ("portal3.png", "This one is a different animal. A hundred and ninety-two vCores and nearly seven "
                     "terabytes of data, next to the pilot's two vCores."),
-    ("portal4.png", "Six hundred and sixty-nine million passages across nine million articles, and "
-                    "it's still growing, on its way to a billion rows. The vector index never had to "
-                    "be rebuilt to get here. Same index, same query, far more rows behind it, and the "
-                    "search is just as fast."),
+    ("portal4.png", "The full table has now crossed one billion passages. Its vector index has not "
+                    "been built, and the application says so instead of presenting a latency it "
+                    "cannot verify. The one-million-row target is the live scale comparison in this demo."),
     ("frame6.png", "And because search is read only, I can keep it completely separate with a "
-                    "Hyperscale named replica. This is read scale-out on the fly. It uses the same page "
-                    "servers as the primary, so there's no data copy, and it comes up in about a "
-                    "minute. It gets its own compute, sized independently, so the ingestion workload on "
-                    "the primary never feels my queries. You can run up to thirty of them."),
+                    "Hyperscale named replica. It uses the same page servers and the same one-million-row "
+                    "vector index as the primary, so there is no data copy and no second index to build. "
+                    "Its compute is sized independently, so work on the primary does not compete with "
+                    "my search queries. You can run up to thirty named replicas."),
     ("frame7.png", "Start small. Grow big. Keep the contract steady while the data grows. You "
                    "shouldn't have to rebuild your app just because your corpus did. That's "
                    "Hyperscale."),

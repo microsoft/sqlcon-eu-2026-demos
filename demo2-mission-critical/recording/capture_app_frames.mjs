@@ -102,18 +102,18 @@ try {
   await shot(page, 'frame4.png')
 
   // Beats 7 and 10: the scaled targets. Each one re-runs the question so the frame shows
-  // that target's own numbers rather than whatever the pilot left on screen.
-  await clickByText(page, 'Research')
+  // that target's own numbers rather than whatever the 4K target left on screen.
+  await clickByText(page, '1M')
   await page.waitForTimeout(30_000)
   await search(page)
   await shot(page, 'frame5.png')
 
-  await clickByText(page, 'Replica')
+  await clickByText(page, 'Named Replica')
   await page.waitForTimeout(30_000)
   await search(page)
   await shot(page, 'frame6.png')
 
-  // Beat 11: closing shot on a clean pilot session rather than a repeat of frame 4.
+  // Beat 11: closing shot on a clean 4K session rather than a repeat of frame 4.
   await page.goto(appUrl, { waitUntil: 'networkidle', timeout: 90_000 })
   await page.waitForTimeout(3000)
   await setQuestion(page, QUESTION)

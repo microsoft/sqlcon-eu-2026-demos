@@ -3,8 +3,9 @@
 **Slide title:** Start small. Scale without re-architecting.
 
 An evidence search application over a PMC corpus in Azure SQL Hyperscale. It runs the
-same statement against a small serverless database and, once its embeddings finish
-loading, a very large one. Nothing about the application changes in between.
+same application contract against a 4K serverless pilot, a 1M indexed table on the
+primary, and that same 1M index through a named replica. A 1B table is also visible, but
+the app correctly withholds search until its own vector index exists.
 
 ## How search works
 
@@ -17,13 +18,16 @@ which is what makes the similarity meaningful.
 > stored vectors exactly (cosine 1.000000). `potion-retrieval-32M` scores 0.48–0.67 against
 > the same rows, so it is a different vector space and must not be used for queries.
 
-Three retrieval modes ship in one statement:
+Three retrieval modes ship for the 4K pilot:
 
 | Mode | What it does |
 |---|---|
 | **Vector** | Cosine ANN over the DiskANN index. Best for natural-language questions. |
 | **Keyword** | `FREETEXTTABLE` full-text ranking. Best for rare or exact domain terms. |
 | **Hybrid** | Reciprocal rank fusion of both. The default. |
+
+The larger tables have the same vector shape but not the pilot's full-text index or
+filtering metadata, so their compatible query profile is vector-only.
 
 Two design decisions came out of testing and matter more than they look:
 
@@ -43,29 +47,32 @@ On the pilot it runs around 5 ms warm and about 25 ms on the first call after a 
 In keyword mode there is no vector search, so the field reads `--` rather than borrowing
 the round-trip number.
 
-## Three targets
+## Four targets
 
-| Target | Environment key | What it is |
-|---|---|---|
-| Pilot | `small` | The serverless Hyperscale database in this repo |
-| Research | `large` | The full corpus, still loading |
-| Replica | `replica` | A serverless Hyperscale **named replica** of the full corpus |
+| UI label | Environment key | What it is | Current state |
+|---|---|---|---|
+| `4K` | `small` | Serverless Hyperscale pilot | 4,076 passages, hybrid ready |
+| `1M` | `million` | `dbo.pmc_chunks_1M` on the primary | 1,000,113 passages, vector ready |
+| `1B` | `billion` | `dbo.pmc_chunks` on the primary | 1,000,000,014 passages, index not built |
+| `Named Replica` | `replica` | The 1M table through a named replica | 1,000,113 passages, vector ready |
 
 A named replica shares the primary's storage, so no data is copied and the corpus stays in
 one place. It is read-only and sized independently, which is exactly what a search workload
-wants. The application statement does not change between the three.
+wants. The application keeps one result contract while selecting a compatible query and
+table from a fixed server-side allowlist.
 
 ### Replica status
 
 `research-replica` **exists and is Online**: `HS_S_Gen5_8` serverless named replica of
 `vbench_large`, min 1 vCore, on `vbnech-large-server` in East US 2. The app is configured to
-use it, and reports it as not reachable until the two items below are done.
+use it. A live local API validation returned five results from the 1M vector index on both
+the primary and named replica.
 
 `autoPauseDelay` reads `-1` because East US 2 does not persist auto-pause. That is expected
 and does not matter here; auto-pause is demonstrated on the pilot.
 
-Two prerequisites remain, and both belong to the owner of `vbnech-large-server`
-(Entra admin `ankhedekar@microsoft.com`):
+The deployed managed identity still needs these prerequisites if they have not already
+been completed by the owner of `vbnech-large-server`:
 
 1. **A network path from the app.** The Container Apps environment has around 160 rotating
    outbound addresses, so per-IP firewall rules are not workable. Either enable
@@ -83,9 +90,8 @@ Two prerequisites remain, and both belong to the owner of `vbnech-large-server`
    ALTER ROLE db_datareader ADD MEMBER [caldova-workload-id];
    ```
 
-Once the team finishes loading embeddings and builds the vector index on the primary, that
-index appears on the replica through shared storage and the Replica target starts working
-with no application change.
+The `vidx_embedding` cosine vector index on `dbo.pmc_chunks_1M` is already enabled on the
+primary and visible through shared storage on the replica. The 1B table remains unindexed.
 
 [deploy/create-named-replica.sh](deploy/create-named-replica.sh) records how the replica was
 created. Note that `az sql db replica create` cannot make a serverless named replica: it
@@ -119,8 +125,8 @@ docs/           Demo plan, stage script, recording script
 | Workload | Container Apps job `caldova-workload`, every 3 hours |
 
 The large database (`vbnech-large-server` / `vbench_large`) is **read-only** for this work.
-Its embeddings are still loading, so no vector index has been built on it and the
-application reports it as not ready rather than inventing a comparison.
+The existing 1M vector index is used as-is. No index has been built on the 1B table, so the
+application reports that target as not ready rather than inventing a comparison.
 
 ## Rebuild from scratch
 
@@ -150,4 +156,4 @@ AZURE_SQL_SMALL_DATABASE=research npm start
 
 - No latency or scale number is spoken unless it appears in a retained report.
 - The app shows `--` and an explanation when a database is not ready.
-- The large database gets no index and no writes until its load finishes.
+- The existing 1M index is read-only for this demo; the 1B table gets no index or writes.

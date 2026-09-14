@@ -5,8 +5,8 @@
 
 ## Preflight
 
-- Open the app and confirm the Pilot database reports `Live ready`.
-- Run the stage question once so the plan is warm.
+- Open the app and confirm `4K`, `1M`, and `Named Replica` report `Live ready`.
+- Run the stage question once on `4K` and `1M` so both plans are warm.
 - Leave the Evidence tab selected.
 - Speak only latency numbers that appear in a retained report.
 
@@ -18,7 +18,7 @@
 
 This is Caldova, a biomedical evidence explorer. Underneath it is one parameterized Azure
 SQL query. Five hundred twelve dimension embeddings, compared with cosine distance. This
-statement stays the same for both databases."
+application contract stays steady as the database target changes."
 
 **0:20 | Evidence tab, run the stage question**
 
@@ -35,24 +35,26 @@ both rankings. Keyword still wins on rare clinical terms, so in practice we run 
 together. And each result carries the passages either side of it, so the quote reads as
 written."
 
-**1:05 | Select Research**
+**1:05 | Select 1M**
 
-"Now the same application against the independent research database. I'm not changing the
-query, the embedding model, or the schema. Only the connection target.
+"Now the same application against one million passages on the primary. The embedding model,
+vector dimensions, cosine distance, and result contract stay the same. This path uses the
+existing DiskANN index on the one-million-row table.
 
-That corpus is still loading embeddings, so its vector index has not been built yet. The
-app says not ready and leaves the timings blank rather than showing a number it cannot
-verify."
+The row count and vector-search time on screen come from that database, not from the pilot."
 
-**1:30 | Return to Evidence**
+**1:30 | Select Named Replica**
 
-"That is the operating model: begin with the footprint you need, keep the contract steady
-as the corpus grows, and scale without rebuilding the application around a different data
-system."
+"For read scale-out, I can send the same search to a named replica. It shares the primary's
+storage and the same one-million-row vector index, while its compute is independent. There
+is no second copy of the data and no second index to build."
 
 **1:50**
 
 "Start small. Scale without re-architecting."
+
+The `1B` button is an optional honesty check: it reports that the vector index has not been
+built and leaves the timing blank. Do not describe it as a working search target.
 
 ## If something fails
 

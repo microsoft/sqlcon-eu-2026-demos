@@ -15,7 +15,7 @@ import './App.css'
 // Empty when the API is served from the same origin; set when the UI is hosted by Fabric.
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 
-type Environment = 'small' | 'large' | 'replica'
+type Environment = 'small' | 'million' | 'billion' | 'replica'
 type SearchMode = 'vector' | 'keyword' | 'hybrid'
 type ResultView = 'evidence' | 'sql'
 
@@ -126,10 +126,38 @@ LEFT JOIN dbo.pmc_chunks AS next_chunk
 WHERE best.DocumentRank = 1
 ORDER BY best.Score DESC;`
 
+const VECTOR_SEARCH_SQL = `DECLARE @QueryVector VECTOR(512) =
+  CAST(@queryVectorJson AS VECTOR(512));
+
+SET @VectorStart = SYSUTCDATETIME();
+
+SELECT TOP (@candidates) WITH APPROXIMATE
+  chunk.document_id,
+  chunk.chunk_number,
+  vector_result.distance AS Distance
+FROM VECTOR_SEARCH(
+  TABLE  = __CHUNKS_TABLE__ AS chunk,
+  COLUMN = embedding,
+  SIMILAR_TO = @QueryVector,
+  METRIC = 'COSINE'
+) AS vector_result
+ORDER BY vector_result.distance;
+
+-- The API keeps the best passage per article, joins article
+-- metadata, and returns the neighboring chunks for context.`
+
 const environmentButtons: Record<Environment, string> = {
-  small: 'Pilot',
-  large: 'Research',
-  replica: 'Replica',
+  small: '4K',
+  million: '1M',
+  billion: '1B',
+  replica: 'Named Replica',
+}
+
+const environmentTables: Record<Environment, string> = {
+  small: 'dbo.pmc_chunks',
+  million: 'dbo.pmc_chunks_1M',
+  billion: 'dbo.pmc_chunks',
+  replica: 'dbo.pmc_chunks_1M',
 }
 
 const modeLabels: Record<SearchMode, string> = {
@@ -144,7 +172,7 @@ function formatCount(value: number | null | undefined) {
 
 function App() {
   const [environment, setEnvironment] = useState<Environment>('small')
-  const [mode] = useState<SearchMode>('hybrid')
+  const mode: SearchMode = environment === 'small' ? 'hybrid' : 'vector'
   const [peerReviewedOnly, setPeerReviewedOnly] = useState(false)
   const [query, setQuery] = useState(DEMO_QUERIES[0])
   const [executedQuery, setExecutedQuery] = useState('')
@@ -176,6 +204,7 @@ function App() {
 
   const chooseEnvironment = (next: Environment) => {
     setEnvironment(next)
+    if (next !== 'small') setPeerReviewedOnly(false)
     setMetrics(null)
     setReadiness(null)
     setEvidence([])
@@ -250,8 +279,8 @@ function App() {
             </div>
             <div className="environment-control" aria-label="Search configuration">
               <span className="control-label">Database</span>
-              <div className="segment-group">
-                {(['small', 'large', 'replica'] as const).map((option) => (
+              <div className="segment-group environment-segments">
+                {(['small', 'million', 'billion', 'replica'] as const).map((option) => (
                   <button
                     className={environment === option ? 'selected' : ''}
                     key={option}
@@ -278,6 +307,7 @@ function App() {
                   type="button"
                   onClick={() => setPeerReviewedOnly(true)}
                   aria-pressed={peerReviewedOnly}
+                  disabled={environment !== 'small'}
                 >
                   Peer-reviewed
                 </button>
@@ -354,11 +384,13 @@ function App() {
           {view === 'sql' ? (
             <div className="sql-view">
               <div className="sql-caption">
-                <div><Check size={17} /> One parameterized query for every database</div>
+                <div><Check size={17} /> Query for the selected database target</div>
               </div>
-              <pre><code>{SEARCH_SQL
-                .replace('__VECTOR_FILTER__', peerReviewedOnly ? '\n    AND chunk.is_preprint = 0' : '')
-                .replace('__KEYWORD_FILTER__', peerReviewedOnly ? '\n  AND chunk.is_preprint = 0' : '')}</code></pre>
+              <pre><code>{environment === 'small'
+                ? SEARCH_SQL
+                    .replace('__VECTOR_FILTER__', peerReviewedOnly ? '\n    AND chunk.is_preprint = 0' : '')
+                    .replace('__KEYWORD_FILTER__', peerReviewedOnly ? '\n  AND chunk.is_preprint = 0' : '')
+                : VECTOR_SEARCH_SQL.replace('__CHUNKS_TABLE__', environmentTables[environment])}</code></pre>
             </div>
           ) : evidence.length > 0 && selectedEvidence ? (
             <div className="evidence-layout">

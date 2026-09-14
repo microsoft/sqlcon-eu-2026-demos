@@ -108,7 +108,7 @@ h1 {
   letter-spacing: 0;
 }
 
-.environment-control { min-width: 312px; }
+.environment-control { min-width: 420px; }
 .control-label {
   display: block;
   margin-bottom: 7px;
@@ -124,6 +124,9 @@ h1 {
   padding: 4px;
   background: #e3e8e4;
   border-radius: 7px;
+}
+.segment-group.environment-segments {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 .segment-group button, .view-tabs button, .query-preset-row button,
 .evidence-card, .search-button { font: inherit; }
@@ -470,7 +473,7 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   .topbar { grid-template-columns: 1fr auto; }
   .primary-nav { display: none; }
   .workspace-heading { align-items: stretch; flex-direction: column; }
-  .environment-control { width: min(100%, 360px); }
+  .environment-control { width: min(100%, 420px); min-width: 0; }
   .metric-strip { grid-template-columns: repeat(2, 1fr); }
   .metric { border-bottom: 1px solid #d7ded9; }
   .metric:first-child { padding-left: 20px; }

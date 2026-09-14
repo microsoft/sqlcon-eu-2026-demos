@@ -8,8 +8,9 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { performance } from 'node:perf_hooks'
 
-type Environment = 'small' | 'large' | 'replica'
+type Environment = 'small' | 'million' | 'billion' | 'replica'
 type SearchMode = 'vector' | 'keyword' | 'hybrid'
+type SearchProfile = 'hybrid' | 'vector'
 
 type CorpusStatusRow = { ChunkCount: number; DocumentCount: number }
 type IndexStatusRow = { IndexName: string; IndexVersion: string }
@@ -40,7 +41,13 @@ type SearchRow = {
 }
 
 type PoolEntry = { pool: Promise<MSSQL.ConnectionPool>; expiresAt: number }
-type DatabaseTarget = { server: string; database: string; poolKey: string }
+type DatabaseTarget = {
+  server: string
+  database: string
+  poolKey: string
+  tableName: 'dbo.pmc_chunks' | 'dbo.pmc_chunks_1M'
+  searchProfile: SearchProfile
+}
 
 class ApiError extends Error {
   constructor(readonly status: number, readonly code: string, message: string) {
@@ -49,17 +56,21 @@ class ApiError extends Error {
 }
 
 const DATABASE_LABELS: Record<Environment, string> = {
-  small: 'Caldova Pilot',
-  large: 'Caldova Research',
-  replica: 'Research replica',
+  small: '4K pilot',
+  million: '1M primary',
+  billion: '1B primary',
+  replica: '1M named replica',
 }
 
-// A Hyperscale named replica shares the primary's storage, so the same statement runs
-// unchanged against an independently sized read-only endpoint.
-const ENVIRONMENT_PREFIXES: Record<Environment, string> = {
-  small: 'AZURE_SQL_SMALL',
-  large: 'AZURE_SQL_LARGE',
-  replica: 'AZURE_SQL_REPLICA',
+const ENVIRONMENT_TARGETS: Record<Environment, {
+  prefix: string
+  tableName: DatabaseTarget['tableName']
+  searchProfile: SearchProfile
+}> = {
+  small: { prefix: 'AZURE_SQL_SMALL', tableName: 'dbo.pmc_chunks', searchProfile: 'hybrid' },
+  million: { prefix: 'AZURE_SQL_LARGE', tableName: 'dbo.pmc_chunks_1M', searchProfile: 'vector' },
+  billion: { prefix: 'AZURE_SQL_LARGE', tableName: 'dbo.pmc_chunks', searchProfile: 'vector' },
+  replica: { prefix: 'AZURE_SQL_REPLICA', tableName: 'dbo.pmc_chunks_1M', searchProfile: 'vector' },
 }
 
 const pools = new Map<string, PoolEntry>()
@@ -72,12 +83,25 @@ const embeddingServiceUrl = (process.env.EMBEDDING_SERVICE_URL ?? 'http://127.0.
 
 // The statement lives in server/search.sql so the app and the SQL tooling stay in step.
 const SEARCH_SQL = await readFile(path.join(path.dirname(fileURLToPath(import.meta.url)), 'search.sql'), 'utf8')
+const VECTOR_SEARCH_SQL = await readFile(
+  path.join(path.dirname(fileURLToPath(import.meta.url)), 'search-vector.sql'),
+  'utf8',
+)
 
-const CORPUS_STATUS_QUERY = `
-SELECT (SELECT COUNT_BIG(*) FROM dbo.pmc_chunks) AS ChunkCount,
-       (SELECT COUNT_BIG(*) FROM dbo.pmc_documents) AS DocumentCount;`
+function getCorpusStatusQuery(target: DatabaseTarget, includeDocumentCount: boolean) {
+  return `
+SELECT
+  (SELECT SUM(partition.rows)
+   FROM sys.partitions AS partition
+   WHERE partition.object_id = OBJECT_ID(N'${target.tableName}')
+     AND partition.index_id IN (0, 1)) AS ChunkCount,
+  ${includeDocumentCount
+    ? `(SELECT COUNT_BIG(DISTINCT document_id) FROM ${target.tableName})`
+    : 'CAST(NULL AS BIGINT)'} AS DocumentCount;`
+}
 
-const INDEX_STATUS_QUERY = `
+function getIndexStatusQuery(target: DatabaseTarget) {
+  return `
 SELECT TOP (1)
   index_definition.name AS IndexName,
   JSON_VALUE(vector_index.build_parameters, '$.Version') AS IndexVersion
@@ -85,12 +109,15 @@ FROM sys.vector_indexes AS vector_index
 INNER JOIN sys.indexes AS index_definition
     ON index_definition.object_id = vector_index.object_id
    AND index_definition.index_id = vector_index.index_id
-WHERE vector_index.object_id = OBJECT_ID(N'dbo.pmc_chunks')
+WHERE vector_index.object_id = OBJECT_ID(N'${target.tableName}')
   AND vector_index.distance_metric = N'COSINE'
   AND index_definition.is_disabled = 0;`
+}
 
-const KEYWORD_STATUS_QUERY = `
-SELECT CAST(OBJECTPROPERTYEX(OBJECT_ID('dbo.pmc_chunks'), 'TableFulltextItemCount') AS INT) AS IndexedRows;`
+function getKeywordStatusQuery(target: DatabaseTarget) {
+  return `
+SELECT CAST(OBJECTPROPERTYEX(OBJECT_ID(N'${target.tableName}'), 'TableFulltextItemCount') AS INT) AS IndexedRows;`
+}
 
 app.disable('x-powered-by')
 app.use(express.json({ limit: '32kb' }))
@@ -119,8 +146,8 @@ app.use((request, response, next) => {
 })
 
 function getEnvironment(value: unknown): Environment {
-  if (value !== 'small' && value !== 'large' && value !== 'replica') {
-    throw new ApiError(400, 'INVALID_ENVIRONMENT', 'Environment must be small, large, or replica.')
+  if (value !== 'small' && value !== 'million' && value !== 'billion' && value !== 'replica') {
+    throw new ApiError(400, 'INVALID_ENVIRONMENT', 'Environment must be small, million, billion, or replica.')
   }
   return value
 }
@@ -134,7 +161,8 @@ function getSearchMode(value: unknown): SearchMode {
 }
 
 function getDatabaseTarget(environment: Environment): DatabaseTarget {
-  const prefix = ENVIRONMENT_PREFIXES[environment]
+  const definition = ENVIRONMENT_TARGETS[environment]
+  const prefix = definition.prefix
   const database = process.env[`${prefix}_DATABASE`]?.trim()
   if (!database) {
     throw new ApiError(503, 'DATABASE_NOT_CONFIGURED', `${prefix}_DATABASE is not configured.`)
@@ -143,7 +171,13 @@ function getDatabaseTarget(environment: Environment): DatabaseTarget {
   if (!server) {
     throw new ApiError(503, 'SERVER_NOT_CONFIGURED', `${prefix}_SERVER is not configured.`)
   }
-  return { server, database, poolKey: `${server}/${database}` }
+  return {
+    server,
+    database,
+    poolKey: `${server}/${database}`,
+    tableName: definition.tableName,
+    searchProfile: definition.searchProfile,
+  }
 }
 
 async function embedQuery(query: string): Promise<number[]> {
@@ -221,17 +255,21 @@ async function inspectEnvironment(environment: Environment): Promise<Environment
   }
 
   try {
-    const [corpus, index, keyword] = await Promise.all([
-      pool.request().query<CorpusStatusRow>(CORPUS_STATUS_QUERY),
-      pool.request().query<IndexStatusRow>(INDEX_STATUS_QUERY),
-      pool.request().query<{ IndexedRows: number | null }>(KEYWORD_STATUS_QUERY),
-    ])
+    const index = await pool.request().query<IndexStatusRow>(getIndexStatusQuery(target))
+    const indexReady = index.recordset.length === 1
+    const corpus = await pool.request().query<CorpusStatusRow>(
+      getCorpusStatusQuery(target, indexReady),
+    )
+    const keywordReady = target.searchProfile === 'hybrid'
+      ? Number((await pool.request().query<{ IndexedRows: number | null }>(
+          getKeywordStatusQuery(target),
+        )).recordset[0]?.IndexedRows ?? 0) > 0
+      : false
 
     // COUNT_BIG arrives as a string, so compare numerically.
     const chunkCount = Number(corpus.recordset[0]?.ChunkCount ?? 0)
-    const documentCount = Number(corpus.recordset[0]?.DocumentCount ?? 0)
-    const indexReady = index.recordset.length === 1
-    const keywordReady = Number(keyword.recordset[0]?.IndexedRows ?? 0) > 0
+    const documentCountValue = corpus.recordset[0]?.DocumentCount
+    const documentCount = documentCountValue == null ? null : Number(documentCountValue)
 
     return {
       ...base,
@@ -245,7 +283,7 @@ async function inspectEnvironment(environment: Environment): Promise<Environment
       message: chunkCount === 0
         ? 'The corpus is empty.'
         : indexReady
-          ? `${documentCount.toLocaleString()} articles, ${chunkCount.toLocaleString()} passages.`
+          ? `${documentCount?.toLocaleString() ?? 'Unknown'} articles, ${chunkCount.toLocaleString()} passages.`
           : 'The vector index has not been built on this database yet.',
     }
   } catch (error) {
@@ -284,6 +322,14 @@ app.post('/api/search', async (request, response) => {
       throw new ApiError(400, 'INVALID_QUERY', 'Provide a question between 1 and 500 characters.')
     }
 
+    const target = getDatabaseTarget(environment)
+    if (target.searchProfile === 'vector' && mode !== 'vector') {
+      throw new ApiError(400, 'MODE_NOT_SUPPORTED', `${DATABASE_LABELS[environment]} supports vector search only.`)
+    }
+    if (target.searchProfile === 'vector' && peerReviewedOnly) {
+      throw new ApiError(400, 'FILTER_NOT_SUPPORTED', `${DATABASE_LABELS[environment]} does not include source-type metadata.`)
+    }
+
     const readiness = await inspectEnvironment(environment)
     if (!readiness.ready) {
       throw new ApiError(503, 'DATABASE_NOT_READY', `${readiness.databaseLabel}: ${readiness.message}`)
@@ -296,8 +342,14 @@ app.post('/api/search', async (request, response) => {
     const vector = await embedQuery(query)
     const embedMs = performance.now() - embedStarted
 
-    const pool = await getPool(getDatabaseTarget(environment))
+    const pool = await getPool(target)
     const queryStarted = performance.now()
+    const searchStatement = target.searchProfile === 'vector'
+      ? VECTOR_SEARCH_SQL.replaceAll('__CHUNKS_TABLE__', target.tableName)
+      : SEARCH_SQL.replaceAll(
+          '/*PEER_REVIEWED_FILTER*/',
+          peerReviewedOnly ? '\n          AND chunk.is_preprint = 0' : '',
+        )
     const result = await pool.request()
       .input('queryVectorJson', sql.NVarChar(sql.MAX), JSON.stringify(vector))
       .input('queryText', sql.NVarChar(500), query)
@@ -305,11 +357,7 @@ app.post('/api/search', async (request, response) => {
       .input('top', sql.Int, 5)
       .input('useVector', sql.Bit, mode === 'vector' || mode === 'hybrid')
       .input('useKeyword', sql.Bit, mode === 'keyword' || mode === 'hybrid')
-      // Injected rather than parameterised: targets without the column must still compile.
-      .query<SearchRow>(SEARCH_SQL.replaceAll(
-        '/*PEER_REVIEWED_FILTER*/',
-        peerReviewedOnly ? '\n          AND chunk.is_preprint = 0' : '',
-      ))
+      .query<SearchRow>(searchStatement)
     const databaseMs = performance.now() - queryStarted
     // Measured inside the engine, so it is the ANN search only.
     const vectorSearchMs = result.recordset[0]?.VectorSearchMs ?? null

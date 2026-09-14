@@ -5,20 +5,22 @@ Caldova is the stage application for the Demo 2 thesis:
 > Start small. Scale without re-architecting.
 
 It is a biomedical evidence explorer. A natural-language question is embedded at request
-time, and one parameterized statement runs against whichever Azure SQL Hyperscale target is
-selected. The statement does not change between targets; only the connection does.
+time and sent to the selected Azure SQL Hyperscale target. The target contract stays fixed,
+while a server-side allowlist chooses the compatible table and query profile.
 
 ## How a search works
 
 1. The question is sent to the embedding service, which returns 512 L2-normalized
    `float32` values.
-2. That vector and the raw question are passed to [search.sql](../database/search.sql).
-3. The statement runs up to two retrievals and fuses them:
+2. That vector and the raw question are passed to the selected retrieval query.
+3. The 4K target runs up to two retrievals and fuses them:
    - **Vector** — approximate nearest neighbour over the DiskANN cosine index.
    - **Keyword** — `FREETEXTTABLE` over the full-text index.
    - **Hybrid** — both, combined with reciprocal rank fusion (k = 60).
-4. Results are deduplicated to the best passage per article, boilerplate is excluded, and
-   the neighbouring passages are attached so each quote reads in context.
+4. The scale targets run vector-only retrieval because their source table has no full-text
+   index or hybrid-query metadata columns.
+5. Results are deduplicated to the best passage per article and neighbouring passages are
+   attached so each quote reads in context.
 
 `VectorSearchMs` is measured inside the engine around the ANN retrieval only, so it
 excludes the round trip and the embedding call. The UI reports it separately from total
@@ -26,20 +28,23 @@ time.
 
 ## Fail-closed behaviour
 
-Every target is checked before it is queried. If the database is unreachable, or the vector
-or full-text index is missing, the app reports why and leaves the timings as `--`. It never
-displays a number it cannot back up.
+Every target is checked before it is queried. If the database is unreachable or the index
+required by that target is missing, the app reports why and leaves the timings as `--`. It
+never displays a number it cannot back up. Unsupported modes and filters are also rejected
+instead of silently changing their meaning.
 
 ## Environments
 
-| Key | Database | Purpose |
-|---|---|---|
-| `small` | `research` on `antho-caldova` | Hyperscale serverless pilot, auto-pauses |
-| `large` | `vbench_large` | The full corpus, still loading embeddings |
-| `replica` | `research-replica` | Serverless named replica of `vbench_large` |
+| Key | UI label | Database table | Search profile | Verified state |
+|---|---|---|---|---|
+| `small` | `4K` | `research.dbo.pmc_chunks` | Hybrid | 4,076 passages, ready |
+| `million` | `1M` | `vbench_large.dbo.pmc_chunks_1M` | Vector | 1,000,113 passages, ready |
+| `billion` | `1B` | `vbench_large.dbo.pmc_chunks` | Vector | 1,000,000,014 passages, index not built |
+| `replica` | `Named Replica` | `research-replica.dbo.pmc_chunks_1M` | Vector | 1,000,113 passages, ready |
 
-The named replica shares the primary's storage but has its own compute, so reading through
-it does not compete with the loading job on the primary.
+The named replica shares the primary's storage and 1M vector index but has its own compute,
+so reading through it does not compete with work on the primary. Table identifiers are not
+accepted from API input; they come only from the fixed mapping in `server/index.ts`.
 
 ## Configuration
 
