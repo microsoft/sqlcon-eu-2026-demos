@@ -9,6 +9,8 @@ Each demo closes a chapter, and demo 3 ties the first two together.
 | 2 | Mission-Critical, at Any Scale | Start small. Scale without re-architecting. | [demo2-mission-critical](demo2-mission-critical) |
 | 3 | Your Data Estate Running Itself | From estate-wide signal to application fix | [demo3-estate-running-itself](demo3-estate-running-itself) |
 
+The [SSMS what's new demo](ssms-whatsnew) shows the recorded two-minute workflow from poorly formatted coworker SQL to a performance recommendation in GitHub Copilot Agent Mode.
+
 ## Why one repository
 
 Demos 2 and 3 share an application. In demo 2 it is an evidence search app on Azure SQL
@@ -33,6 +35,10 @@ demo3-estate-running-itself/
   app/                      Operations view sharing the demo 2 design system
   database/                 Invoice schema, seed, and the anti-pattern queries
   docs/                     What to show, and what the fix actually changes
+ssms-whatsnew/
+  setup/                    Public environment setup and rehearsal guidance
+  demo/                     Recorded storyboard and alternate demo concept
+  assets/                   Setup, query, validation, and teardown SQL
 shared/
   design-system/            Tokens and layout primitives used by both apps
   SKILL.md                  Agent skill for building a matching demo app
