@@ -1,0 +1,7 @@
+@model PartnerDetailsViewModel
+@{ ViewData["Title"] = Model.Customer.Name; }
+<div class="page-heading"><div><span class="eyebrow">PARTNER 360</span><h1>@Model.Customer.Name</h1><p>@Model.Customer.Region · @Model.Customer.Email</p></div><a class="btn btn-accent" asp-controller="Orders" asp-action="Create">Create order</a></div>
+<div class="metric-grid metric-grid-compact"><div class="metric"><span>Lifetime value</span><strong>@Model.LifetimeValue.ToString("C0")</strong></div><div class="metric"><span>Average order</span><strong>@Model.AverageOrderValue.ToString("C0")</strong></div><div class="metric"><span>Total orders</span><strong>@Model.Orders.Count</strong></div><div class="metric"><span>Open commitments</span><strong>@Model.Orders.Count(order => order.Status != "Fulfilled")</strong></div></div>
+<section class="data-section"><div class="section-heading"><div><span class="section-kicker">ACCOUNT HISTORY</span><h2>Orders</h2></div></div><div class="table-responsive"><table class="table app-table"><thead><tr><th>Order</th><th>Status</th><th>Date</th><th class="text-end">Value</th></tr></thead><tbody>
+@foreach (var order in Model.Orders) { <tr><td><a asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id">#@order.Id</a></td><td><span class="status status-@order.Status.ToLowerInvariant()">@order.Status</span></td><td>@order.OrderedAtUtc.ToString("dd MMM yyyy")</td><td class="text-end">@order.TotalAmount.ToString("C")</td></tr> }
+</tbody></table></div></section>

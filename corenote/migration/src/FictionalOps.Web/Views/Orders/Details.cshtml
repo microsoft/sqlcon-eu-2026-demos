@@ -1,0 +1,8 @@
+@model Order
+@{ ViewData["Title"] = $"Order #{Model.Id}"; }
+<div class="page-heading"><div><span class="eyebrow">VOYAGE RECORD</span><h1>Order #@Model.Id</h1><p>@Model.Customer.Name | @Model.OrderedAtUtc.ToString("dd MMM yyyy, HH:mm") UTC</p></div><span class="status status-large">@Model.Status</span></div>
+@if (TempData["Message"] is string message) { <div class="alert alert-success">@message</div> }
+<section class="data-section"><div class="section-heading"><h2>Line items</h2></div><div class="table-responsive"><table class="table app-table"><thead><tr><th>SKU</th><th>Product</th><th>Quantity</th><th class="text-end">Unit price</th><th class="text-end">Line total</th></tr></thead><tbody>
+@foreach (var item in Model.Items) { <tr><td>@item.Product.Sku</td><td>@item.Product.Name</td><td>@item.Quantity</td><td class="text-end">@item.UnitPrice.ToString("C")</td><td class="text-end">@((item.Quantity * item.UnitPrice).ToString("C"))</td></tr> }
+</tbody><tfoot><tr><th colspan="4" class="text-end">Order total</th><th class="text-end">@Model.TotalAmount.ToString("C")</th></tr></tfoot></table></div></section>
+@if (!string.IsNullOrWhiteSpace(Model.Notes)) { <div class="note-panel"><strong>Handling note</strong><p>@Model.Notes</p></div> }

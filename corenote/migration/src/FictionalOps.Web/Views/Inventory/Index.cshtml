@@ -1,0 +1,7 @@
+@model IReadOnlyList<InventoryItemViewModel>
+@{ ViewData["Title"] = "Inventory risk"; }
+<div class="page-heading"><div><span class="eyebrow">WORKFLOW 03 · INVENTORY</span><h1>Inventory health</h1><p>See availability, committed demand, and replenishment signals in one view.</p></div><span class="summary-chip">@Model.Count(item => item.RiskLevel != "Healthy") need attention</span></div>
+<div class="insight-banner"><strong>Recommended action</strong><span>Review critical SKUs before accepting high-volume orders. Current commitments are included below.</span></div>
+<section class="data-section"><div class="table-responsive"><table class="table app-table"><thead><tr><th>SKU</th><th>Product</th><th>Available</th><th>Committed</th><th>Coverage</th><th>Signal</th></tr></thead><tbody>
+@foreach (var item in Model) { var percent = Math.Min(100, item.Product.StockQuantity * 100 / 450); <tr><td>@item.Product.Sku</td><td><strong>@item.Product.Name</strong><small class="table-subtext">@item.Product.UnitPrice.ToString("C") unit cost</small></td><td>@item.Product.StockQuantity</td><td>@item.UnitsCommitted</td><td><div class="stock-bar"><i style="width:@percent%"></i></div></td><td><span class="risk risk-@item.RiskLevel.ToLowerInvariant()">@item.RiskLevel</span></td></tr> }
+</tbody></table></div></section>

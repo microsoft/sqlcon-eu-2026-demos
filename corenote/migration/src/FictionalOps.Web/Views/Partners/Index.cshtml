@@ -1,0 +1,6 @@
+@model IReadOnlyList<PartnerPerformanceViewModel>
+@{ ViewData["Title"] = "Partner portfolio"; }
+<div class="page-heading"><div><span class="eyebrow">WORKFLOW 04 · PARTNERS</span><h1>Partner portfolio</h1><p>Understand commercial value, open commitments, and account recency.</p></div><span class="summary-chip">@Model.Count active accounts</span></div>
+<section class="data-section"><div class="table-responsive"><table class="table app-table"><thead><tr><th>Partner</th><th>Region</th><th>Orders</th><th>Open</th><th>Last activity</th><th class="text-end">Lifetime value</th></tr></thead><tbody>
+@foreach (var partner in Model) { <tr><td><a class="partner-cell" asp-action="Details" asp-route-id="@partner.CustomerId"><span class="partner-avatar">@partner.Name[..1]</span><strong>@partner.Name</strong></a></td><td>@partner.Region</td><td>@partner.OrderCount</td><td>@partner.OpenOrders</td><td>@partner.LastOrderUtc?.ToString("dd MMM yyyy")</td><td class="text-end"><strong>@partner.LifetimeValue.ToString("C0")</strong></td></tr> }
+</tbody></table></div></section>
