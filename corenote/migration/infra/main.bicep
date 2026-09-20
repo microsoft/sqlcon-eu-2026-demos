@@ -1,24 +1,38 @@
 @description('Globally unique prefix for resource names.')
-param prefix string = 'velaforge'
+param prefix string = 'nandiyo'
 
 param location string = resourceGroup().location
 
-@description('Azure SQL administrator login used for the initial migration.')
-param sqlAdminLogin string
+@description('Microsoft Entra login configured as the Azure SQL administrator.')
+param entraAdminLogin string
+
+@description('Object ID of the Microsoft Entra user configured as the Azure SQL administrator.')
+param entraAdminObjectId string
+
+@description('Create Operations in Bicep. Leave false when a BACPAC import will create it.')
+param createDatabase bool = false
 
 @secure()
-param sqlAdminPassword string
+@description('Optional public client IP for the local BACPAC import. Remove its firewall rule after migration.')
+param clientIpAddress string = ''
 
 var suffix = uniqueString(subscription().subscriptionId, resourceGroup().id)
 var sqlServerName = '${prefix}-sql-${suffix}'
 var webAppName = '${prefix}-web-${suffix}'
+var databaseName = 'Operations'
 
 resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' = {
   name: sqlServerName
   location: location
   properties: {
-    administratorLogin: sqlAdminLogin
-    administratorLoginPassword: sqlAdminPassword
+    administrators: {
+      administratorType: 'ActiveDirectory'
+      principalType: 'User'
+      login: entraAdminLogin
+      sid: entraAdminObjectId
+      tenantId: subscription().tenantId
+      azureADOnlyAuthentication: true
+    }
     minimalTlsVersion: '1.2'
     publicNetworkAccess: 'Enabled'
   }
@@ -33,9 +47,18 @@ resource allowAzureServices 'Microsoft.Sql/servers/firewallRules@2023-08-01-prev
   }
 }
 
-resource database 'Microsoft.Sql/servers/databases@2023-08-01-preview' = {
+resource allowMigrationClient 'Microsoft.Sql/servers/firewallRules@2023-08-01-preview' = if (!empty(clientIpAddress)) {
   parent: sqlServer
-  name: 'Operations'
+  name: 'AllowMigrationClient'
+  properties: {
+    startIpAddress: clientIpAddress
+    endIpAddress: clientIpAddress
+  }
+}
+
+resource database 'Microsoft.Sql/servers/databases@2023-08-01-preview' = if (createDatabase) {
+  parent: sqlServer
+  name: databaseName
   location: location
   sku: {
     name: 'HS_Gen5'
@@ -76,6 +99,7 @@ resource webApp 'Microsoft.Web/sites@2023-12-01' = {
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
       alwaysOn: true
+      healthCheckPath: '/health'
       appSettings: [
         {
           name: 'ASPNETCORE_ENVIRONMENT'
@@ -85,7 +109,7 @@ resource webApp 'Microsoft.Web/sites@2023-12-01' = {
       connectionStrings: [
         {
           name: 'OperationsDatabase'
-          connectionString: 'Server=tcp:${sqlServer.properties.fullyQualifiedDomainName},1433;Initial Catalog=${database.name};User ID=${sqlAdminLogin};Password=${sqlAdminPassword};Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;'
+          connectionString: 'Server=tcp:${sqlServer.properties.fullyQualifiedDomainName},1433;Initial Catalog=${databaseName};Authentication=Active Directory Managed Identity;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;'
           type: 'SQLAzure'
         }
       ]
@@ -94,5 +118,8 @@ resource webApp 'Microsoft.Web/sites@2023-12-01' = {
 }
 
 output appUrl string = 'https://${webApp.properties.defaultHostName}'
+output webAppName string = webApp.name
+output webAppPrincipalId string = webApp.identity.principalId
+output sqlServerName string = sqlServer.name
 output sqlServerFqdn string = sqlServer.properties.fullyQualifiedDomainName
-output databaseName string = database.name
+output databaseName string = databaseName

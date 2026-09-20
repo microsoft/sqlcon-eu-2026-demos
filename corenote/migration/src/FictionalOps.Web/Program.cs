@@ -1,4 +1,6 @@
+using System.Globalization;
 using FictionalOps.Web.Data;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -6,10 +8,14 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews();
 builder.Services.AddDbContext<OperationsDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("OperationsDatabase")));
-
-// INTENTIONAL MIGRATION ISSUE APP-001: in-memory session loses state when App Service scales out.
-builder.Services.AddDistributedMemoryCache();
-builder.Services.AddSession(options => options.IdleTimeout = TimeSpan.FromMinutes(30));
+builder.Services.AddHealthChecks();
+builder.Services.Configure<RequestLocalizationOptions>(options =>
+{
+    var supportedCultures = new[] { new CultureInfo("en-US") };
+    options.DefaultRequestCulture = new RequestCulture("en-US");
+    options.SupportedCultures = supportedCultures;
+    options.SupportedUICultures = supportedCultures;
+});
 
 var app = builder.Build();
 
@@ -23,12 +29,13 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+app.UseRequestLocalization();
 
 app.UseRouting();
 
-app.UseSession();
 app.UseAuthorization();
 
+app.MapHealthChecks("/health");
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");

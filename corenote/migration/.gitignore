@@ -1,0 +1,28 @@
+# .NET build outputs
+**/bin/
+**/obj/
+TestResults/
+*.trx
+coverage/
+*.coverage
+*.coveragexml
+
+# LibMan restores these pinned dependencies during build
+src/FictionalOps.Web/wwwroot/lib/
+
+# Local publish and migration outputs
+publish/
+publish.zip
+*.bacpac
+attempts/
+export/
+import/
+*.dacpac
+
+# User-specific files and secrets
+.vs/
+.vscode/
+*.user
+*.suo
+appsettings.Local.json
+appsettings.*.Local.json

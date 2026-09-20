@@ -33,6 +33,7 @@ body { margin-bottom: 70px; color: var(--ink); background-color: var(--paper); b
 .section-heading h2 { margin: 0; font-size: 1.2rem; }
 .section-heading a { font: 700 .76rem Arial, sans-serif; }
 .section-kicker { display: block; margin-bottom: .18rem; color: #8a969b; font: 700 .62rem Arial, sans-serif; }
+.table-responsive { max-width: 100%; overflow-x: auto; }
 .app-table { margin: 0; font-family: Arial, sans-serif; }
 .app-table th { color: #647078; font-size: .76rem; text-transform: uppercase; }
 .app-table td, .app-table th { padding: .85rem 1.2rem; vertical-align: middle; }

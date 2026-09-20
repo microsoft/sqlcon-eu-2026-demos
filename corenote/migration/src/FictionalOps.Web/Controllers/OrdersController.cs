@@ -77,7 +77,6 @@ public class OrdersController(OperationsDbContext database) : Controller
         product.StockQuantity -= model.Quantity;
         database.Orders.Add(order);
         await database.SaveChangesAsync();
-        HttpContext.Session.SetInt32("LastOrderId", order.Id);
         TempData["Message"] = $"Order #{order.Id} was submitted.";
         return RedirectToAction(nameof(Details), new { id = order.Id });
     }

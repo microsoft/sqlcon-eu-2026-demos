@@ -1,57 +1,101 @@
-# Nandiyo Logistics
+# Nandiyo Logistics migration lab
 
-**Every order, on course.**
+Nandiyo Logistics is a fictional ASP.NET Core 8 MVC order-fulfillment application
+backed by SQL Server. This lab demonstrates how to assess and replatform the
+application to Linux Azure App Service and its database to Azure SQL Database
+Hyperscale.
 
-Nandiyo Logistics is a fictional ASP.NET Core MVC order-fulfillment application backed
-by SQL Server. It is intentionally designed as a small Azure modernization lab, not a
-real company or production system. The technical solution retains the `FictionalOps`
-identifier so the baseline and migration assets remain directly comparable.
+The completed solution uses:
 
-## Product workflows
+- ASP.NET Core 8 on Linux Azure App Service
+- Azure SQL Database Hyperscale
+- Microsoft Entra-only SQL authentication
+- An App Service system-assigned managed identity
+- An offline BACPAC migration
+- An App Service health check at `/health`
 
-1. **Order intake:** select a partner and SKU, validate available inventory, create the
-    commercial commitment, and reduce stock in one transaction.
-2. **Fulfillment control:** prioritize orders by SLA risk and advance work from Submitted
-    to Processing to Fulfilled through a managed queue.
-3. **Inventory risk:** compare on-hand stock with open commitments and act on Critical,
-    Watch, and Healthy coverage signals.
-4. **Partner performance:** rank accounts by lifetime value, review open commitments,
-    and drill into a complete Partner 360 order history.
+> [!WARNING]
+> This lab creates billable Azure resources and enables public network access to the
+> Azure SQL logical server. Use a nonproduction subscription, remove the temporary
+> migration firewall rule immediately after import, and delete the resource group when
+> you finish.
 
-The executive operations brief connects all four workflows with booked revenue, average
-order value, fulfillment rate, SLA exposure, partner ranking, and inventory exceptions.
+## Business workflows
+
+1. **Order intake** reserves inventory and creates a customer commitment.
+2. **Fulfillment control** advances orders from Submitted to Processing to Fulfilled.
+3. **Inventory risk** compares stock with open commitments.
+4. **Partner performance** reports account value and order history.
 
 The deterministic seed creates 18 customers, 24 products, 60 orders, and 120 order
-items. `Orders` and `OrderItems` are the larger demo tables; reference tables contain a
-few tens of rows.
+items.
+
+## Choose a starting point
+
+- Use the current branch to inspect or deploy the completed migration.
+- Use the `corenote-migration-baseline` tag to repeat the assessment and remediation
+  from the original application.
+
+From the repository root, create a separate baseline worktree:
+
+```powershell
+git worktree add ..\sqlcon-migration-baseline corenote-migration-baseline
+Set-Location ..\sqlcon-migration-baseline\corenote\migration
+```
+
+Do not deploy the baseline infrastructure. Return to the current branch before
+provisioning Azure.
 
 ## Run locally
 
-Prerequisites: .NET 8 SDK and SQL Server LocalDB.
+Requirements:
+
+- Windows with SQL Server LocalDB
+- .NET 8 SDK
+- `sqlcmd`
 
 ```powershell
 dotnet restore FictionalOps.sln
-dotnet run --project src/FictionalOps.Web
+dotnet build FictionalOps.sln --configuration Release
+dotnet run --project src\FictionalOps.Web
 ```
 
-The app creates and seeds the `Operations` LocalDB database on first startup. To add
-the intentional database migration finding, run:
+The application creates and seeds the local `Operations` database on first startup.
+Stop the application with <kbd>Ctrl</kbd>+<kbd>C</kbd> before changing or exporting
+the database.
 
-```powershell
-sqlcmd -S "(localdb)\MSSQLLocalDB" -E -i database\legacy-cross-database-reporting.sql
-```
+## Reproduce the migration
 
-Use `docs/DEMO-WALKTHROUGH.md` for the short presenter script or
-`docs/ONE-HOUR-AZURE-MODERNIZATION-WORKSHOP.md` for the complete hands-on workshop.
-See `docs/MIGRATION.md` for the two findings, remediations, target architecture, and
-cutover sequence.
+Follow [the end-to-end migration workshop](docs/ONE-HOUR-AZURE-MODERNIZATION-WORKSHOP.md)
+for the complete sequence:
 
-## Deploy the Azure target
+1. Create the local baseline and intentional SQL compatibility findings.
+2. Assess the application and SQL Server database.
+3. Apply and validate the focused remediations.
+4. Provision App Service and an Entra-only Azure SQL logical server.
+5. Export and import `Operations` with a BACPAC.
+6. Grant the App Service managed identity database access.
+7. Deploy and validate all application workflows.
+8. Remove temporary access and clean up Azure resources.
 
-```powershell
-az group create --name rg-velaforge-demo --location eastus
-az deployment group create --resource-group rg-velaforge-demo --template-file infra/main.bicep --parameters sqlAdminLogin=<login> sqlAdminPassword=<secure-value>
-dotnet publish src/FictionalOps.Web -c Release -o .\publish
-```
+## Repository layout
 
-Supply secrets interactively or through an approved secret store; do not commit them.
+| Path | Purpose |
+|---|---|
+| `src/FictionalOps.Web` | ASP.NET Core MVC application |
+| `database/assessment` | Read-only Azure SQL readiness inventory |
+| `database/legacy-cross-database-reporting.sql` | Creates the intentional SQL Server compatibility findings |
+| `database/remediation` | Idempotent source-database remediation |
+| `infra/main.bicep` | App Service and Azure SQL infrastructure |
+| `skills` | SQL migration and assessment skills used by the guided workflow |
+| `docs/ONE-HOUR-AZURE-MODERNIZATION-WORKSHOP.md` | Complete replication guide |
+
+Generated build, browser-library, publish, and BACPAC artifacts are intentionally
+excluded from source control.
+
+## Production considerations
+
+The template favors a repeatable lab over a production network design. Before using
+the pattern for a real workload, evaluate private endpoints, restricted outbound
+access, deployment slots, monitoring, backup retention, threat protection, availability
+requirements, and CI/CD.
