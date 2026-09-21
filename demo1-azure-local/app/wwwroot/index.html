@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f2ec">
+  <title>Caldova | Regional Care Transfer Center</title>
+  <link rel="stylesheet" href="/app.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <strong>Caldova</strong>
+        <span>Regional Care Transfer Center</span>
+      </div>
+      <div class="topbar-actions">
+        <div class="system-status"><span id="status-dot"></span><span id="system-status">Connecting</span></div>
+        <button class="icon-button" id="refresh" type="button" title="Refresh transfer queue" aria-label="Refresh transfer queue">↻</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel queue-panel" aria-labelledby="queue-title">
+        <div class="panel-heading">
+          <div><p class="eyebrow">Live operations</p><h1 id="queue-title">Incoming transfers</h1></div>
+          <span class="badge" id="queue-count">0</span>
+        </div>
+        <div class="queue" id="transfer-queue" aria-live="polite"></div>
+      </section>
+
+      <section class="panel detail-panel" aria-labelledby="detail-title">
+        <div class="panel-heading">
+          <div><p class="eyebrow">Pre-arrival transfer</p><h1 id="detail-title">Select a transfer</h1></div>
+          <span class="priority" id="priority">--</span>
+        </div>
+        <div class="detail-content" id="transfer-detail">
+          <div class="empty-state"><strong>No transfer selected</strong><span>Choose an incoming transfer to view regional records.</span></div>
+        </div>
+      </section>
+
+      <section class="panel briefing-panel" aria-labelledby="briefing-title">
+        <div class="panel-heading">
+          <div><p class="eyebrow">Grounded assistance</p><h1 id="briefing-title">Receiving briefing</h1></div>
+          <span class="badge">AI</span>
+        </div>
+        <div class="briefing-content" id="briefing-content">
+          <div class="empty-state"><strong>Briefing pending</strong><span>Generate a draft after reviewing the transfer packet.</span></div>
+        </div>
+      </section>
+    </main>
+
+    <footer><span>SQL Server 2025 · Foundry Local · Regional Care</span><span>All patient data shown is synthetic</span></footer>
+  </div>
+</body>
+</html>

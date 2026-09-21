@@ -5,7 +5,7 @@ Each demo closes a chapter, and demo 3 ties the first two together.
 
 | Demo | Title | Slide title | Owner |
 |---|---|---|---|
-| 1 | Sovereign Private Cloud with SQL Server | Your data and AI, on infrastructure you control | not in this repo yet |
+| 1 | Sovereign Private Cloud with SQL Server | Your data and AI, on infrastructure you control | [demo1-azure-local](demo1-azure-local) |
 | 2 | Mission-Critical, at Any Scale | Start small. Scale without re-architecting. | [demo2-mission-critical](demo2-mission-critical) |
 | 3 | Your Data Estate Running Itself | From estate-wide signal to application fix | [demo3-estate-running-itself](demo3-estate-running-itself) |
 
@@ -24,6 +24,11 @@ needs to look like the keynote app should import those tokens rather than restyl
 ## Layout
 
 ```
+demo1-azure-local/            SQL Server 2025 with Foundry Local on Azure Local
+  app/                        ASP.NET Core transfer-center application
+  database/                   Ordered deployment and validation scripts
+  setup/                      Azure Local gateway setup and verification
+  hyperscale-foundry/         Optional Azure SQL + Microsoft Foundry variant
 demo2-mission-critical/     Vector search on Hyperscale, serverless economics
   app/                      React client + Express API (Caldova)
   database/                 Approval-gated T-SQL and deployment scripts
