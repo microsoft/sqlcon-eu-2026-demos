@@ -1,0 +1,7 @@
+@model IReadOnlyList<Order>
+@{ ViewData["Title"] = "Orders"; }
+<div class="page-heading"><div><span class="eyebrow">DISPATCH LEDGER</span><h1>Orders</h1><p>Track every commitment from intake to fulfillment.</p></div><a class="btn btn-accent" asp-action="Create">Create order</a></div>
+<div class="filter-row"><a class="filter-link @(ViewBag.Status is null ? "active" : "")" asp-action="Index">All</a><a class="filter-link @(ViewBag.Status == "Submitted" ? "active" : "")" asp-action="Index" asp-route-status="Submitted">Submitted</a><a class="filter-link @(ViewBag.Status == "Processing" ? "active" : "")" asp-action="Index" asp-route-status="Processing">Processing</a><a class="filter-link @(ViewBag.Status == "Fulfilled" ? "active" : "")" asp-action="Index" asp-route-status="Fulfilled">Fulfilled</a></div>
+<section class="data-section"><div class="table-responsive"><table class="table app-table"><thead><tr><th>Order</th><th>Customer</th><th>Status</th><th>Ordered</th><th class="text-end">Total</th></tr></thead><tbody>
+@foreach (var order in Model) { <tr><td><a asp-action="Details" asp-route-id="@order.Id">#@order.Id</a></td><td>@order.Customer.Name</td><td><span class="status status-@order.Status.ToLowerInvariant()">@order.Status</span></td><td>@order.OrderedAtUtc.ToString("dd MMM yyyy")</td><td class="text-end"><strong>@order.TotalAmount.ToString("C")</strong></td></tr> }
+</tbody></table></div></section>

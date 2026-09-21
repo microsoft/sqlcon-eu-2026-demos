@@ -1,0 +1,1 @@
+select top 5 o.CustomerID,sum(ol.Quantity*ol.UnitPrice) as SalesValue from Sales.Orders o join Sales.OrderLines ol on o.OrderID=ol.OrderID where year(o.OrderDate)=2015 group by o.CustomerID order by SalesValue desc;

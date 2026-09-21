@@ -37,16 +37,6 @@
   text-decoration: none;
 }
 
-.brand-mark {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  color: white;
-  background: var(--forest);
-  border-radius: 7px;
-}
-
 .primary-nav { align-self: stretch; gap: 32px; }
 .primary-nav a {
   height: 100%;
@@ -118,7 +108,7 @@ h1 {
   letter-spacing: 0;
 }
 
-.environment-control { min-width: 276px; }
+.environment-control { min-width: 420px; }
 .control-label {
   display: block;
   margin-bottom: 7px;
@@ -130,10 +120,13 @@ h1 {
 }
 .segment-group {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   padding: 4px;
   background: #e3e8e4;
   border-radius: 7px;
+}
+.segment-group.environment-segments {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 .segment-group button, .view-tabs button, .query-preset-row button,
 .evidence-card, .search-button { font: inherit; }
@@ -422,8 +415,8 @@ h1 {
   border: 1px solid var(--line);
   border-radius: 7px;
   overflow: hidden;
-  background: #10231d;
-  box-shadow: 0 18px 35px rgba(19, 39, 33, 0.11);
+  background: #ffffff;
+  box-shadow: 0 18px 35px rgba(19, 39, 33, 0.06);
 }
 .sql-caption {
   min-height: 54px;
@@ -432,18 +425,18 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  border-bottom: 1px solid #2d443b;
-  color: #aebdb6;
+  border-bottom: 1px solid var(--line);
+  color: #5d6b65;
   font-size: 11px;
 }
-.sql-caption > div { gap: 7px; color: #e4ece8; font-weight: 800; }
-.sql-caption svg { color: #68c29e; }
+.sql-caption > div { gap: 7px; color: #16281f; font-weight: 800; }
+.sql-caption svg { color: #1f7a52; }
 .sql-view pre {
   min-height: 430px;
   margin: 0;
   padding: 29px;
   overflow: auto;
-  color: #dce9e3;
+  color: #1d2b25;
   font: 13px/1.75 var(--mono);
   white-space: pre-wrap;
 }
@@ -480,7 +473,7 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   .topbar { grid-template-columns: 1fr auto; }
   .primary-nav { display: none; }
   .workspace-heading { align-items: stretch; flex-direction: column; }
-  .environment-control { width: min(100%, 360px); }
+  .environment-control { width: min(100%, 420px); min-width: 0; }
   .metric-strip { grid-template-columns: repeat(2, 1fr); }
   .metric { border-bottom: 1px solid #d7ded9; }
   .metric:first-child { padding-left: 20px; }

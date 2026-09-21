@@ -1,0 +1,8 @@
+@model IReadOnlyList<Order>
+@{ ViewData["Title"] = "Fulfillment control"; }
+<div class="page-heading"><div><span class="eyebrow">WORKFLOW 02 · FULFILLMENT</span><h1>Control tower</h1><p>Prioritize aging commitments and move work through the network.</p></div><span class="summary-chip">@Model.Count active</span></div>
+@if (TempData["Message"] is string message) { <div class="alert alert-success">@message</div> }
+<div class="workflow-strip"><div><strong>1</strong><span>Submitted<small>@Model.Count(order => order.Status == "Submitted") awaiting review</small></span></div><div><strong>2</strong><span>Processing<small>@Model.Count(order => order.Status == "Processing") in motion</small></span></div><div><strong>3</strong><span>Fulfilled<small>Closed and measured</small></span></div></div>
+<section class="data-section"><div class="table-responsive"><table class="table app-table"><thead><tr><th>Priority</th><th>Order</th><th>Partner</th><th>Age</th><th>Value</th><th></th></tr></thead><tbody>
+@foreach (var order in Model) { var age = (DateTime.UtcNow.Date - order.OrderedAtUtc.Date).Days; <tr><td><span class="priority @(age > 5 ? "priority-high" : "")">@(age > 5 ? "SLA risk" : "On track")</span></td><td><a asp-action="Details" asp-route-id="@order.Id">#@order.Id</a><small class="table-subtext">@order.Status</small></td><td>@order.Customer.Name</td><td>@age days</td><td>@order.TotalAmount.ToString("C")</td><td class="text-end"><form asp-action="AdvanceStatus" method="post"><input type="hidden" name="id" value="@order.Id" /><button class="btn btn-sm btn-action" type="submit">@(order.Status == "Submitted" ? "Start work" : "Mark fulfilled")</button></form></td></tr> }
+</tbody></table></div></section>

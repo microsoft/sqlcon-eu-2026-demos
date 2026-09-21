@@ -6,11 +6,8 @@ import {
   Check,
   ChevronDown,
   Clock3,
-  Database,
   FileText,
-  FlaskConical,
   Search,
-  ShieldCheck,
   Sparkles,
 } from 'lucide-react'
 import './App.css'
@@ -18,7 +15,7 @@ import './App.css'
 // Empty when the API is served from the same origin; set when the UI is hosted by Fabric.
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 
-type Environment = 'small' | 'large'
+type Environment = 'small' | 'million' | 'billion' | 'replica'
 type SearchMode = 'vector' | 'keyword' | 'hybrid'
 type ResultView = 'evidence' | 'sql'
 
@@ -40,6 +37,7 @@ type SearchResponse = {
   documentCount: number
   indexStatus: string
   embedMs: number
+  vectorSearchMs: number | null
   databaseMs: number
   totalMs: number
   evidence: Evidence[]
@@ -69,7 +67,14 @@ const DEMO_QUERIES = [
 const SEARCH_SQL = `DECLARE @QueryVector VECTOR(512) =
   CAST(@queryVectorJson AS VECTOR(512));
 
-WITH VectorRaw AS (
+-- The vector step is materialised on its own so it can be
+-- timed in-engine: this is the ANN search, not the joins.
+SET @VectorStart = SYSUTCDATETIME();
+
+INSERT @VectorCandidates (document_id, chunk_number, Distance, Position)
+SELECT ranked.document_id, ranked.chunk_number, ranked.Distance,
+       ROW_NUMBER() OVER (ORDER BY ranked.Distance)
+FROM (
   SELECT TOP (@candidates) WITH APPROXIMATE
     chunk.document_id, chunk.chunk_number,
     vector_result.distance AS Distance
@@ -79,22 +84,48 @@ WITH VectorRaw AS (
     SIMILAR_TO = @QueryVector,
     METRIC = 'COSINE'
   ) AS vector_result
-  WHERE @useVector = 1 AND chunk.is_boilerplate = 0
+  -- Filters run inside the vector search, not after it.
+  WHERE chunk.is_boilerplate = 0__VECTOR_FILTER__
   ORDER BY vector_result.distance
+) AS ranked;
+
+SET @VectorMicroseconds =
+  DATEDIFF_BIG(microsecond, @VectorStart, SYSUTCDATETIME());
+
+-- Keyword candidates come from the full-text index.
+INSERT @KeywordCandidates (document_id, chunk_number, Position)
+SELECT TOP (@candidates)
+  chunk.document_id, chunk.chunk_number,
+  ROW_NUMBER() OVER (ORDER BY ranked.[RANK] DESC)
+FROM FREETEXTTABLE(dbo.pmc_chunks, text_chunk,
+                   @queryText, @candidates) AS ranked
+INNER JOIN dbo.pmc_chunks AS chunk
+  ON chunk.chunk_id = ranked.[KEY]
+WHERE chunk.is_boilerplate = 0__KEYWORD_FILTER__
+ORDER BY ranked.[RANK] DESC;
+
+-- Fuse vector and full-text positions with reciprocal rank fusion.
+WITH Fused AS (
+  SELECT candidate.document_id, candidate.chunk_number,
+    SUM(1.0 / (60.0 + candidate.Position)) AS Score,
+    MIN(candidate.Distance) AS Distance
+  FROM (
+    SELECT document_id, chunk_number, Position, Distance
+    FROM @VectorCandidates
+    UNION ALL
+    SELECT document_id, chunk_number, Position, NULL
+    FROM @KeywordCandidates
+  ) AS candidate
+  GROUP BY candidate.document_id, candidate.chunk_number
 ),
-KeywordCandidates AS (
-  SELECT TOP (@candidates)
-    chunk.document_id, chunk.chunk_number,
-    ROW_NUMBER() OVER (ORDER BY ranked.[RANK] DESC) AS Position
-  FROM FREETEXTTABLE(dbo.pmc_chunks, text_chunk,
-                     @queryText, @candidates) AS ranked
-  INNER JOIN dbo.pmc_chunks AS chunk
-    ON chunk.chunk_id = ranked.[KEY]
-  WHERE @useKeyword = 1 AND chunk.is_boilerplate = 0
-  ORDER BY ranked.[RANK] DESC
+BestPerDocument AS (
+  SELECT document_id, chunk_number, Score, Distance,
+    ROW_NUMBER() OVER (
+      PARTITION BY document_id
+      ORDER BY Score DESC, chunk_number
+    ) AS DocumentRank
+  FROM Fused
 )
--- Reciprocal rank fusion, then the best passage per article,
--- returned with the chunks either side for context.
 SELECT TOP (@top)
   CONCAT('PMC', document.pmcid) AS PmcId,
   document.title, chunk.text_chunk AS Passage,
@@ -115,10 +146,41 @@ LEFT JOIN dbo.pmc_chunks AS next_chunk
 WHERE best.DocumentRank = 1
 ORDER BY best.Score DESC;`
 
-const databaseLabels: Record<Environment, string> = {
-  small: 'Caldova Pilot',
-  large: 'Caldova Research',
+const VECTOR_SEARCH_SQL = `DECLARE @QueryVector VECTOR(512) =
+  CAST(@queryVectorJson AS VECTOR(512));
+
+SET @VectorStart = SYSUTCDATETIME();
+
+SELECT TOP (@candidates) WITH APPROXIMATE
+  chunk.document_id,
+  chunk.chunk_number,
+  vector_result.distance AS Distance
+FROM VECTOR_SEARCH(
+  TABLE  = __CHUNKS_TABLE__ AS chunk,
+  COLUMN = embedding,
+  SIMILAR_TO = @QueryVector,
+  METRIC = 'COSINE'
+) AS vector_result
+ORDER BY vector_result.distance;
+
+-- The API keeps the best passage per article, joins article
+-- metadata, and returns the neighboring chunks for context.`
+
+const environmentButtons: Record<Environment, string> = {
+  small: '4K',
+  million: '1M',
+  billion: '1B',
+  replica: 'Named Replica',
 }
+
+const environmentTables: Record<Environment, string> = {
+  small: 'dbo.pmc_chunks',
+  million: 'dbo.pmc_chunks_1M',
+  billion: 'dbo.pmc_chunks',
+  replica: 'dbo.pmc_chunks',
+}
+
+const visibleEnvironments: Environment[] = ['small', 'billion', 'replica']
 
 const modeLabels: Record<SearchMode, string> = {
   vector: 'Vector',
@@ -132,7 +194,8 @@ function formatCount(value: number | null | undefined) {
 
 function App() {
   const [environment, setEnvironment] = useState<Environment>('small')
-  const [mode, setMode] = useState<SearchMode>('hybrid')
+  const mode: SearchMode = environment === 'small' ? 'hybrid' : 'vector'
+  const [peerReviewedOnly, setPeerReviewedOnly] = useState(false)
   const [query, setQuery] = useState(DEMO_QUERIES[0])
   const [executedQuery, setExecutedQuery] = useState('')
   const [view, setView] = useState<ResultView>('evidence')
@@ -163,7 +226,9 @@ function App() {
 
   const chooseEnvironment = (next: Environment) => {
     setEnvironment(next)
+    if (next !== 'small') setPeerReviewedOnly(false)
     setMetrics(null)
+    setReadiness(null)
     setEvidence([])
     setExecutedQuery('')
     setNotice('Database changed. Run the question again.')
@@ -181,7 +246,7 @@ function App() {
       const response = await fetch(`${API_BASE_URL}/api/search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ environment, query: trimmed, mode }),
+        body: JSON.stringify({ environment, query: trimmed, mode, peerReviewedOnly }),
       })
       if (!response.ok) {
         const error = (await response.json().catch(() => ({}))) as { message?: string }
@@ -194,7 +259,7 @@ function App() {
       setExecutedQuery(trimmed)
       setNotice(
         payload.evidence.length > 0
-          ? `${modeLabels[payload.mode]} search returned ${payload.evidence.length} articles.`
+          ? `Search returned ${payload.evidence.length} articles using the vector index.`
           : 'No articles matched that question.',
       )
     } catch (error) {
@@ -213,7 +278,6 @@ function App() {
     <div className="app-shell">
       <header className="topbar">
         <a className="brand" href="#main">
-          <span className="brand-mark"><FlaskConical size={19} /></span>
           Caldova
         </a>
         <nav className="primary-nav" aria-label="Primary navigation">
@@ -237,8 +301,8 @@ function App() {
             </div>
             <div className="environment-control" aria-label="Search configuration">
               <span className="control-label">Database</span>
-              <div className="segment-group">
-                {(['small', 'large'] as const).map((option) => (
+              <div className="segment-group environment-segments">
+                {visibleEnvironments.map((option) => (
                   <button
                     className={environment === option ? 'selected' : ''}
                     key={option}
@@ -246,23 +310,29 @@ function App() {
                     onClick={() => chooseEnvironment(option)}
                     aria-pressed={environment === option}
                   >
-                    {option === 'small' ? 'Pilot' : 'Research'}
+                    {environmentButtons[option]}
                   </button>
                 ))}
               </div>
-              <span className="control-label">Search</span>
+              <span className="control-label">Evidence</span>
               <div className="segment-group">
-                {(['vector', 'keyword', 'hybrid'] as const).map((option) => (
-                  <button
-                    className={mode === option ? 'selected' : ''}
-                    key={option}
-                    type="button"
-                    onClick={() => setMode(option)}
-                    aria-pressed={mode === option}
-                  >
-                    {modeLabels[option]}
-                  </button>
-                ))}
+                <button
+                  className={peerReviewedOnly ? '' : 'selected'}
+                  type="button"
+                  onClick={() => setPeerReviewedOnly(false)}
+                  aria-pressed={!peerReviewedOnly}
+                >
+                  All sources
+                </button>
+                <button
+                  className={peerReviewedOnly ? 'selected' : ''}
+                  type="button"
+                  onClick={() => setPeerReviewedOnly(true)}
+                  aria-pressed={peerReviewedOnly}
+                  disabled={environment !== 'small'}
+                >
+                  Peer-reviewed
+                </button>
               </div>
             </div>
           </div>
@@ -280,16 +350,6 @@ function App() {
               {isSearching ? 'Searching' : 'Search evidence'}
             </button>
           </form>
-
-          <div className="query-preset-row">
-            <span>Try</span>
-            {DEMO_QUERIES.map((preset, index) => (
-              <button type="button" key={preset} onClick={() => setQuery(preset)}>
-                {['Sleep and insulin', 'Gum disease and blood pressure', 'Microbiome and mood',
-                  'Exercise and dementia', 'Immunotherapy resistance'][index]}
-              </button>
-            ))}
-          </div>
         </section>
 
         <section className="status-band" aria-live="polite">
@@ -302,24 +362,18 @@ function App() {
           </div>
           <div className="metric-strip">
             <div className="metric">
-              <Database size={18} />
-              <span>Database<strong>{metrics?.databaseLabel ?? databaseLabels[environment]}</strong></span>
+              <FileText size={18} />
+              <span>Articles returned<strong>{evidence.length > 0 ? evidence.length : '--'}</strong></span>
             </div>
             <div className="metric">
               <BookOpen size={18} />
-              <span>Corpus<strong>{formatCount(metrics?.chunkCount ?? readiness?.chunkCount)} passages</strong></span>
+              <span>Rows searched<strong>{formatCount(metrics?.chunkCount ?? readiness?.chunkCount)}</strong></span>
             </div>
             <div className="metric featured">
               <Clock3 size={18} />
-              <span>Database time<strong>{metrics ? `${metrics.databaseMs.toFixed(0)} ms` : '--'}</strong></span>
-            </div>
-            <div className="metric">
-              <Clock3 size={18} />
-              <span>Total<strong>{metrics ? `${metrics.totalMs.toFixed(0)} ms` : '--'}</strong></span>
-            </div>
-            <div className="metric">
-              <ShieldCheck size={18} />
-              <span>Vector index<strong>{metrics?.indexStatus ?? (readiness?.indexReady ? 'Online · v3' : 'Not built')}</strong></span>
+              <span>Vector search<strong>
+                {metrics?.vectorSearchMs != null ? `${metrics.vectorSearchMs.toFixed(1)} ms` : '--'}
+              </strong></span>
             </div>
           </div>
         </section>
@@ -352,10 +406,13 @@ function App() {
           {view === 'sql' ? (
             <div className="sql-view">
               <div className="sql-caption">
-                <div><Check size={17} /> One parameterized query for both databases</div>
-                <span>512-dimension embeddings · cosine distance</span>
+                <div><Check size={17} /> Query for the selected database target</div>
               </div>
-              <pre><code>{SEARCH_SQL}</code></pre>
+              <pre><code>{environment === 'small'
+                ? SEARCH_SQL
+                    .replace('__VECTOR_FILTER__', peerReviewedOnly ? '\n    AND chunk.is_preprint = 0' : '')
+                    .replace('__KEYWORD_FILTER__', peerReviewedOnly ? '\n  AND chunk.is_preprint = 0' : '')
+                : VECTOR_SEARCH_SQL.replace('__CHUNKS_TABLE__', environmentTables[environment])}</code></pre>
             </div>
           ) : evidence.length > 0 && selectedEvidence ? (
             <div className="evidence-layout">

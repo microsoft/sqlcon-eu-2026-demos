@@ -1,0 +1,30 @@
+﻿@model DashboardViewModel
+@{ ViewData["Title"] = "Operations dashboard"; }
+
+<div class="page-heading executive-heading">
+    <div><span class="eyebrow">EXECUTIVE OPERATIONS BRIEF</span><h1>Good morning. Here is what needs attention.</h1><p>Commercial performance and fulfillment health across the Nandiyo network.</p></div>
+    <div class="heading-actions"><span class="live-indicator"><i></i> Live</span><a class="btn btn-accent" asp-controller="Orders" asp-action="Create">Create order</a></div>
+</div>
+<div class="metric-grid">
+    <div class="metric"><span>Booked revenue</span><strong>@Model.Revenue.ToString("C0")</strong><small>All-time portfolio</small></div>
+    <div class="metric"><span>Open orders</span><strong>@Model.OpenOrders</strong><small>@Model.OrdersAtRisk beyond 5-day SLA</small></div>
+    <div class="metric"><span>Fulfillment rate</span><strong>@Model.FulfillmentRate%</strong><small>Closed orders</small></div>
+    <div class="metric"><span>Average order</span><strong>@Model.AverageOrderValue.ToString("C0")</strong><small>Across @Model.RecentOrders.Count recent records</small></div>
+</div>
+<div class="executive-grid">
+    <section class="data-section">
+        <div class="section-heading"><div><span class="section-kicker">REVENUE</span><h2>Partner performance</h2></div><a asp-controller="Partners" asp-action="Index">All partners</a></div>
+        <div class="partner-ranking">
+        @foreach (var partner in Model.TopPartners) { <a asp-controller="Partners" asp-action="Details" asp-route-id="@partner.CustomerId"><span class="partner-avatar">@partner.Name[..1]</span><span><strong>@partner.Name</strong><small>@partner.Region · @partner.OrderCount orders</small></span><b>@partner.LifetimeValue.ToString("C0")</b></a> }
+        </div>
+    </section>
+    <section class="data-section">
+        <div class="section-heading"><div><span class="section-kicker">EXCEPTIONS</span><h2>Inventory watchlist</h2></div><a asp-controller="Inventory" asp-action="Index">Open inventory</a></div>
+        <div class="risk-list">
+        @foreach (var product in Model.StockRisks) { <div><span><strong>@product.Name</strong><small>@product.Sku</small></span><b>@product.StockQuantity units</b></div> }
+        </div>
+    </section>
+</div>
+<section class="data-section"><div class="section-heading"><div><span class="section-kicker">ACTIVITY</span><h2>Recent orders</h2></div><a asp-controller="Orders" asp-action="Index">View ledger</a></div><div class="table-responsive"><table class="table app-table"><thead><tr><th>Order</th><th>Partner</th><th>Status</th><th>Ordered</th><th class="text-end">Value</th></tr></thead><tbody>
+@foreach (var order in Model.RecentOrders) { <tr><td><a asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id">#@order.Id</a></td><td>@order.Customer.Name</td><td><span class="status status-@order.Status.ToLowerInvariant()">@order.Status</span></td><td>@order.OrderedAtUtc.ToString("dd MMM yyyy")</td><td class="text-end">@order.TotalAmount.ToString("C")</td></tr> }
+</tbody></table></div></section>

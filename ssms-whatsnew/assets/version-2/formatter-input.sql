@@ -1,0 +1,1 @@
+select top 5 c.CustomerName,count(distinct o.OrderID) as OrderCount,cast(sum(ol.Quantity*ol.UnitPrice) as decimal(18,2)) as SalesValue from Sales.Customers c join Sales.Orders o on c.CustomerID=o.CustomerID join Sales.OrderLines ol on o.OrderID=ol.OrderID where o.OrderDate>='20150101' and o.OrderDate<'20160101' group by c.CustomerName order by SalesValue desc;

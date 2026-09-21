@@ -1,58 +1,71 @@
 # Demo 2 stage script
 
 **Target length:** 1:50 to 2:00
-**Thesis:** Start small. Scale without re-architecting.
+**Optional named-replica extension:** 20 seconds
+**Thesis:** Start small. Grow big. Keep the application contract steady.
 
 ## Preflight
 
-- Open the app and confirm the Pilot database reports `Live ready`.
-- Run the stage question once so the plan is warm.
-- Leave the Evidence tab selected.
+- Open the app and confirm `4K`, `1M`, and `Named Replica` report `Live ready`.
+- Confirm `1B` reports that its vector index has not been built and shows no latency.
+- Run the stage question once on `4K` and `1M` so both plans are warm.
+- Leave `4K`, `Hybrid`, and the Evidence tab selected.
 - Speak only latency numbers that appear in a retained report.
 
 ## Live script
 
 **0:00 | SQL query tab visible**
 
-"Start small. Scale without re-architecting.
+"This is Caldova, a biomedical evidence explorer on Azure SQL Hyperscale. Every article is
+split into passages and embedded, with a vector index over the corpus. One search contract
+sits underneath the app, and it stays steady as the database grows."
 
-This is Caldova, a biomedical evidence explorer. Underneath it is one parameterized Azure
-SQL query. Five hundred twelve dimension embeddings, compared with cosine distance. This
-statement stays the same for both databases."
-
-**0:20 | Evidence tab, run the stage question**
+**0:22 | Evidence tab, run the stage question**
 
 "Let's ask it something real. How does disruption of the intestinal microbiome influence
 anxiety and depressive symptoms?
 
-Nothing in that sentence is a keyword match. The query is embedded with the same model that
-embedded the corpus, and every answer comes back tied to the article it came from."
+That isn't a keyword match. The meaning is what gets searched, and every answer links back
+to its article."
 
-**0:45 | Switch search mode**
+**0:42 | Expand a result, then show the SQL query**
 
-"I can run this three ways. Vector on its own, keyword on its own, or hybrid, which fuses
-both rankings. Keyword still wins on rare clinical terms, so in practice we run them
-together. And each result carries the passages either side of it, so the quote reads as
-written."
+"Each result includes the surrounding passages, so the quote reads in context.
 
-**1:05 | Select Research**
+This is hybrid: vector search finds meaning, keyword search finds exact strings such as
+gene names or drug codes, and SQL fuses the rankings. Filters run inside vector search, and
+the timing shown is measured inside the engine."
 
-"Now the same application against the independent research database. I'm not changing the
-query, the embedding model, or the schema. Only the connection target.
+**1:08 | Return to Evidence, keep 4K selected**
 
-That corpus is still loading embeddings, so its vector index has not been built yet. The
-app says not ready and leaves the timings blank rather than showing a number it cannot
-verify."
+"This 4K pilot is Hyperscale serverless. It scales down to half a vCore and auto-pauses when
+idle, so I don't pay for compute when the app isn't used."
 
-**1:30 | Return to Evidence**
+**1:23 | Select 1M and run the same question**
 
-"That is the operating model: begin with the footprint you need, keep the contract steady
-as the corpus grows, and scale without rebuilding the application around a different data
-system."
+"Now the same application against one million passages on the primary. The embedding model,
+vector dimensions, distance metric, and result contract stay fixed. This path uses the
+existing DiskANN index on the one-million-row table."
 
-**1:50**
+**1:40 | Select 1B**
 
-"Start small. Scale without re-architecting."
+"The full table has crossed one billion passages. Its vector index has not been built, and
+the application says so instead of presenting a latency it cannot verify. The one-million-
+row target is the live scale comparison in this demo."
+
+**1:55 | Close**
+
+"Start small. Grow big. Keep the contract steady while the data grows. You shouldn't have
+to rebuild your app just because your corpus did. That's Hyperscale."
+
+## Optional named-replica extension
+
+**2:00 | Select Named Replica and run the same question**
+
+"For read scale-out, I can send the same search to a named replica. It shares the primary's
+page servers and the same one-million-row vector index, so there is no data copy and no
+second index to build. Its compute is sized independently, so work on the primary does not
+compete with my search queries."
 
 ## If something fails
 

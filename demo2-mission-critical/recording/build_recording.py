@@ -5,8 +5,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import shutil
 import subprocess
 from pathlib import Path
+
+from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).parent
 FRAMES = ROOT / "frames"
@@ -14,49 +18,94 @@ AUDIO = ROOT / "audio"
 BUILD = ROOT / "build"
 OUTPUT = ROOT / "caldova-demo2.mp4"
 
+# The keynote workspace keeps its own copy so the cut can be reviewed there.
+MIRROR = Path(os.environ.get("CALDOVA_MIRROR", str(
+    Path.home() / "Library/CloudStorage/OneDrive-Microsoft/Documents/repos"
+    / "annahoffmanteam/events/sqlcon-barcelona-2026/keynotedemo2/recording"
+    / "caldova-demo2.mp4")))
+
 DEFAULT_VOICE = "Samantha"
 DEFAULT_RATE = 145
 TAIL_SILENCE = 0.8
 
+WIP_MANIFEST = FRAMES / "wip.json"
+WIP_TEXT = "WORK IN PROGRESS  \u00b7  THIS SCREEN IS NOT LIVE YET"
+
 # Each beat pairs one narration block with the frame it is spoken over.
 BEATS = [
-    ("frame1.png", "Start small. Scale without re-architecting. "
-                   "This is Caldova. It's a biomedical evidence explorer, and underneath it there's just "
-                   "one SQL query. Five hundred twelve dimension embeddings, compared with cosine "
-                   "distance. That query doesn't change when the database does."),
+    ("frame1.png", "Let's look at how you can start small and scale without re-architecting with "
+                   "Azure SQL Hyperscale. This is Caldova, a biomedical evidence explorer, and it "
+                   "runs on Hyperscale. Every article is chunked into passages, every passage is "
+                   "embedded, and a vector index sits over all of them. Underneath the whole app "
+                   "there is one search contract, and that contract stays steady when the database does."),
     ("frame2.png", "Let's ask it something real. How does disruption of the intestinal microbiome "
                    "influence anxiety and depressive symptoms? Nothing in that sentence is a keyword "
-                   "match. The embeddings do the work, and every answer comes back tied to the article "
-                   "it came from."),
-    ("frame3.png", "You can switch how it searches. Vector on its own, keyword on its own, or hybrid, "
-                   "which fuses both. Keyword still wins on rare terms, so we run them together. And "
-                   "each result brings the passages either side of it, so the quote actually reads."),
-    ("portal1.png", "Here's the part I like. This is Hyperscale serverless. It scales down to half a "
-                    "vCore, and after an hour of nobody asking it anything, it pauses and you stop paying "
-                    "for compute. The next query wakes it back up."),
-    ("portal2.png", "And this is what the usage actually looks like. Short bursts, long quiet gaps. Those "
-                    "flat stretches are the whole point. I have a job hitting it every three hours, so we "
-                    "can watch it pause and resume for real."),
-    ("frame4.png", "Now watch what happens when I point the same app at the big database. Same query, "
-                   "same vectors, same schema. Only the connection changes. Right now it says not ready, "
-                   "and the timings are blank on purpose. The index isn't built yet, so Caldova won't show "
-                   "you a number it can't back up."),
-    ("portal3.png", "That database is a different animal. A hundred and ninety-two vCores and almost five "
-                    "terabytes, next to the pilot's two."),
-    ("portal4.png", "Its corpus is already past three hundred million passages, and it grows while you "
-                    "watch. The team is still loading embeddings on the way to a billion rows. That's why "
-                    "there's no vector index on it yet."),
-    ("frame5.png", "When it is ready, the same query runs there too. Same statement, same embedding "
-                   "model, same index. Only the connection string changes."),
-    ("frame6.png", "So that's the idea. Start with the smallest thing that works. Keep the contract steady "
-                   "while the data grows. You shouldn't have to rebuild your app just because your corpus "
-                   "did."),
-    ("frame7.png", "Start small. Scale without re-architecting."),
+                   "match. The meaning is what gets searched, and every answer comes back tied to the "
+                   "article it came from."),
+    ("frame3.png", "Each result brings the passages either side of it, so the quote actually reads in "
+                   "context instead of stopping mid-sentence."),
+    ("frame4.png", "So how did that run? This was hybrid. Vector search finds meaning. Keyword "
+                   "search finds the exact string, which is what you want for a gene name or a drug "
+                   "code. SQL fuses the two rankings together. And the filters run inside the vector "
+                   "search rather than after it, so narrowing the evidence doesn't quietly throw away "
+                   "the best matches. That timing is the vector search itself, measured inside the "
+                   "engine."),
+    ("portal1.png", "Here's the part I like. We're just getting started, so this is Hyperscale "
+                    "serverless, which now auto-pauses. It scales down to half a vCore, and when "
+                    "nobody is searching, it pauses. If the app isn't being used, I'm not getting "
+                    "billed for compute."),
+    ("portal2.png", "And this is what real usage looks like. Short bursts, long quiet gaps. Those flat "
+                    "stretches are the whole point, because the quiet time costs me nothing."),
+    ("frame5.png", "Now fast forward. The business grows. I point the same app at one million "
+                   "passages on the primary and run the same search. The embedding model, vector "
+                   "dimensions, distance metric, and result contract stay fixed. This path uses the "
+                   "existing DiskANN index on the one-million-row table."),
+    ("portal3.png", "This one is a different animal. A hundred and ninety-two vCores and nearly seven "
+                    "terabytes of data, next to the pilot's two vCores."),
+    ("portal4.png", "The full table has now crossed one billion passages. Its vector index has not "
+                    "been built, and the application says so instead of presenting a latency it "
+                    "cannot verify. The one-million-row target is the live scale comparison in this demo."),
+    ("frame6.png", "And because search is read only, I can keep it completely separate with a "
+                    "Hyperscale named replica. It uses the same page servers and the same one-million-row "
+                    "vector index as the primary, so there is no data copy and no second index to build. "
+                    "Its compute is sized independently, so work on the primary does not compete with "
+                    "my search queries. You can run up to thirty named replicas."),
+    ("frame7.png", "Start small. Grow big. Keep the contract steady while the data grows. You "
+                   "shouldn't have to rebuild your app just because your corpus did. That's "
+                   "Hyperscale."),
 ]
 
 
 def run(args: list[str]) -> None:
     subprocess.run(args, check=True, capture_output=True)
+
+
+def wip_frames() -> set[str]:
+    if not WIP_MANIFEST.exists():
+        return set()
+    return set(json.loads(WIP_MANIFEST.read_text(encoding="utf-8")))
+
+
+def stamp_wip(source: Path, target: Path) -> Path:
+    """Overlay an amber work-in-progress banner on a frame that is not live yet."""
+    image = Image.open(source).convert("RGB")
+    width, height = image.size
+    band_height = max(48, height // 18)
+    draw = ImageDraw.Draw(image)
+    draw.rectangle([(0, 0), (width, band_height)], fill="#f2b705")
+    draw.line([(0, band_height), (width, band_height)], fill="#8a6d00", width=3)
+
+    size = max(18, band_height // 2)
+    try:
+        font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf", size)
+    except OSError:
+        font = ImageFont.load_default()
+
+    box = draw.textbbox((0, 0), WIP_TEXT, font=font)
+    draw.text(((width - (box[2] - box[0])) / 2, (band_height - (box[3] - box[1])) / 2 - box[1]),
+              WIP_TEXT, fill="#1a1400", font=font)
+    image.save(target)
+    return target
 
 
 def duration(path: Path) -> float:
@@ -77,10 +126,13 @@ def main() -> None:
         directory.mkdir(parents=True, exist_ok=True)
 
     segments = []
+    flagged = wip_frames()
     for index, (frame, text) in enumerate(BEATS, start=1):
         frame_path = FRAMES / frame
         if not frame_path.exists():
             raise FileNotFoundError(frame_path)
+        if frame in flagged:
+            frame_path = stamp_wip(frame_path, BUILD / f"wip-{frame}")
 
         speech = AUDIO / f"beat{index}.aiff"
         narration = AUDIO / f"beat{index}.wav"
@@ -100,7 +152,7 @@ def main() -> None:
                     "pad=1920:1200:(ow-iw)/2:(oh-ih)/2,setsar=1",
              "-c:a", "aac", "-b:a", "192k", "-shortest", str(clip)])
         segments.append((clip, seconds))
-        print(f"beat {index:2d}  {frame:<12} {seconds:5.1f}s")
+        print(f"beat {index:2d}  {frame:<12} {seconds:5.1f}s{'  [WIP banner]' if frame in flagged else ''}")
 
     listing = BUILD / "concat.txt"
     listing.write_text("".join(f"file '{clip.resolve()}'\n" for clip, _ in segments), encoding="utf-8")
@@ -108,11 +160,17 @@ def main() -> None:
          "-i", str(listing), "-c", "copy", str(OUTPUT)])
 
     total = duration(OUTPUT)
+    mirrored = None
+    if MIRROR.parent.is_dir():
+        shutil.copy2(OUTPUT, MIRROR)
+        mirrored = str(MIRROR)
     print(json.dumps({
         "output": str(OUTPUT),
+        "mirroredTo": mirrored,
         "voice": args.voice,
         "rate": args.rate,
         "beats": len(segments),
+        "workInProgressFrames": sorted(flagged),
         "durationSeconds": round(total, 1),
         "duration": f"{int(total // 60)}:{int(total % 60):02d}",
     }, indent=2))

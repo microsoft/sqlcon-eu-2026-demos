@@ -3,8 +3,9 @@
 **Slide title:** Start small. Scale without re-architecting.
 
 An evidence search application over a PMC corpus in Azure SQL Hyperscale. It runs the
-same statement against a small serverless database and, once its embeddings finish
-loading, a very large one. Nothing about the application changes in between.
+same application contract against a 4K serverless pilot and large primary and named-replica
+targets. For review recording, an explicit scale toggle can use the indexed 1M table while
+presenting the planned 1B corpus size. A real 1B code path remains available and fail-closed.
 
 ## How search works
 
@@ -17,13 +18,16 @@ which is what makes the similarity meaningful.
 > stored vectors exactly (cosine 1.000000). `potion-retrieval-32M` scores 0.48–0.67 against
 > the same rows, so it is a different vector space and must not be used for queries.
 
-Three retrieval modes ship in one statement:
+Three retrieval modes ship for the 4K pilot:
 
 | Mode | What it does |
 |---|---|
 | **Vector** | Cosine ANN over the DiskANN index. Best for natural-language questions. |
 | **Keyword** | `FREETEXTTABLE` full-text ranking. Best for rare or exact domain terms. |
 | **Hybrid** | Reciprocal rank fusion of both. The default. |
+
+The larger tables have the same vector shape but not the pilot's full-text index or
+filtering metadata, so their compatible query profile is vector-only.
 
 Two design decisions came out of testing and matter more than they look:
 
@@ -32,6 +36,66 @@ Two design decisions came out of testing and matter more than they look:
 - **Context expansion.** Each result carries the preceding and following chunk, so a
   passage that starts mid-sentence still reads. Journal front matter and reference lists
   are excluded through a persisted `is_boilerplate` flag.
+
+## What the timer measures
+
+The app shows **vector search** time, not the round trip. The ANN step is materialised into
+a table variable on its own and timed inside the engine with `SYSUTCDATETIME()`, so the
+number excludes rank fusion, the document joins, and context expansion.
+
+On the pilot it runs around 5 ms warm and about 25 ms on the first call after a resume.
+In keyword mode there is no vector search, so the field reads `--` rather than borrowing
+the round-trip number.
+
+## Four targets
+
+| UI label | Environment key | What it is | Current state |
+|---|---|---|---|
+| `4K` | `small` | Serverless Hyperscale pilot | 4,076 passages, hybrid ready |
+| `1B` | `billion` | Large primary target selected by configuration | Recording projection or real 1B |
+| `Named Replica` | `replica` | Large named-replica target selected by configuration | Recording projection or real 1B |
+
+A named replica shares the primary's storage, so no data is copied and the corpus stays in
+one place. It is read-only and sized independently, which is exactly what a search workload
+wants. The application keeps one result contract while selecting a compatible query and
+table from a fixed server-side allowlist.
+
+### Replica status
+
+`research-replica` **exists and is Online**: `HS_S_Gen5_8` serverless named replica of
+`vbench_large`, min 1 vCore, on `vbnech-large-server` in East US 2. The app is configured to
+use it. A live local API validation returned five results from the 1M vector index on both
+the primary and named replica.
+
+`autoPauseDelay` reads `-1` because East US 2 does not persist auto-pause. That is expected
+and does not matter here; auto-pause is demonstrated on the pilot.
+
+The deployed managed identity still needs these prerequisites if they have not already
+been completed by the owner of `vbnech-large-server`:
+
+1. **A network path from the app.** The Container Apps environment has around 160 rotating
+   outbound addresses, so per-IP firewall rules are not workable. Either enable
+   *Allow Azure services* on the server, or put the Container Apps environment on a VNet
+   behind a NAT gateway and allow that single address. The second is narrower and is the
+   better answer if there is time.
+
+2. **A database user for the app identity.** A named replica is read-only, so the user
+   cannot be created on the replica. It has to be created on the **primary**, where it then
+   replicates:
+
+   ```sql
+   -- On vbench_large, by the server's Entra administrator
+   CREATE USER [caldova-workload-id] FROM EXTERNAL PROVIDER;
+   ALTER ROLE db_datareader ADD MEMBER [caldova-workload-id];
+   ```
+
+The `vidx_embedding` cosine vector index on `dbo.pmc_chunks_1M` is already enabled on the
+primary and visible through shared storage on the replica. The 1B table remains unindexed.
+
+[deploy/create-named-replica.sh](deploy/create-named-replica.sh) records how the replica was
+created. Note that `az sql db replica create` cannot make a serverless named replica: it
+demands `-e` for a serverless SKU and then rejects `-e` as unrecognised, so the script uses
+an ARM REST call.
 
 ## Layout
 
@@ -60,8 +124,20 @@ docs/           Demo plan, stage script, recording script
 | Workload | Container Apps job `caldova-workload`, every 3 hours |
 
 The large database (`vbnech-large-server` / `vbench_large`) is **read-only** for this work.
-Its embeddings are still loading, so no vector index has been built on it and the
-application reports it as not ready rather than inventing a comparison.
+The existing 1M vector index is used as-is. No index has been built on the 1B table, so the
+real 1B mode reports that target as not ready rather than inventing a timing.
+
+### Recording scale toggle
+
+Set `CALDOVA_LARGE_SCALE_MODE=1M` (the default) to query the working 1M vector index for
+the visible `1B` and `Named Replica` targets while presenting `1,000,000,014` in **Rows
+searched**. This display is a review-recording projection, not evidence that the measured
+latency came from a billion-row index.
+
+Set `CALDOVA_LARGE_SCALE_MODE=1B` and restart the API to query `dbo.pmc_chunks` directly.
+That path uses the actual row count and requires a real vector index on the 1B table before
+readiness succeeds. The `1M` button is hidden from the stage UI but its API environment key
+remains available for diagnostics.
 
 ## Rebuild from scratch
 
@@ -89,6 +165,7 @@ AZURE_SQL_SMALL_DATABASE=research npm start
 
 ## Ground rules
 
-- No latency or scale number is spoken unless it appears in a retained report.
+- Timings remain live measurements; the 1B row count shown in 1M recording mode is an
+  explicitly documented stage projection.
 - The app shows `--` and an explanation when a database is not ready.
-- The large database gets no index and no writes until its load finishes.
+- The existing 1M index is read-only for this demo; the 1B table gets no index or writes.

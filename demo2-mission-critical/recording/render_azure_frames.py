@@ -56,12 +56,21 @@ def new_figure():
     return figure, axes
 
 
+def placeholder_banner(axes) -> None:
+    # These frames are API-rendered stand-ins; the portal needs an interactive sign-in.
+    axes.add_patch(FancyBboxPatch((0.0, 0.856), 1.0, 0.044, boxstyle="square,pad=0",
+                                  facecolor="#f2b705", edgecolor="#8a6d00", linewidth=1.4))
+    axes.text(0.5, 0.878, "TO BE UPDATED WITH ACTUAL AZURE PORTAL VIEWS",
+              color="#1a1400", fontsize=16, fontweight="bold", va="center", ha="center")
+
+
 def header(axes, breadcrumb: str, title: str, subtitle: str) -> None:
     axes.add_patch(FancyBboxPatch((0.0, 0.90), 1.0, 0.10, boxstyle="square,pad=0",
                                   facecolor="#010409", edgecolor=EDGE, linewidth=1))
     axes.text(0.035, 0.958, breadcrumb, color=MUTED, fontsize=12, va="center")
     axes.text(0.035, 0.923, title, color=TEXT, fontsize=21, fontweight="bold", va="center")
     axes.text(0.965, 0.940, subtitle, color=ACCENT, fontsize=12, va="center", ha="right")
+    placeholder_banner(axes)
 
 
 def panel(axes, x, y, w, h, title=None):
@@ -271,7 +280,7 @@ def render_large_scale() -> None:
                    GROUP BY t.name;"""
             ).fetchall()
         }
-        sidecar = cursor.execute("SELECT OBJECT_ID('dbo.CaldovaPotionEmbedding');").fetchone()[0]
+        sidecar = cursor.execute("SELECT OBJECT_ID('dbo.pmc_chunks');").fetchone()[0]
 
     pmc_chunks = counts.get("pmc_chunks", 0)
     pmc_documents = counts.get("pmc_documents", 0)
@@ -284,9 +293,9 @@ def render_large_scale() -> None:
     kv_rows(axes, 0.057, 0.755, [
         ("dbo.pmc_chunks", f"{pmc_chunks:,} rows", ACCENT),
         ("dbo.pmc_documents", f"{pmc_documents:,} rows", None),
-        ("Potion sidecar", "Not created yet" if sidecar is None else "Present", AMBER),
-        ("Potion vector index", "Not created yet" if sidecar is None else "Present", AMBER),
-        ("Status", "Embeddings still loading toward one billion rows", AMBER),
+        ("Embeddings", "Loading", AMBER),
+        ("Vector index", "Not created yet", AMBER),
+        ("Status", "On the way to one billion rows", AMBER),
     ], label_w=0.30)
 
     panel(axes, 0.035, 0.12, 0.925, 0.30, "The same contract, at a different scale")

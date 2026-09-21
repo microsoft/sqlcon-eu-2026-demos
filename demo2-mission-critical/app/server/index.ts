@@ -3,12 +3,15 @@ import express from 'express'
 import sql from 'mssql'
 import type * as MSSQL from 'mssql'
 import { existsSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { performance } from 'node:perf_hooks'
 
-type Environment = 'small' | 'large'
+type Environment = 'small' | 'million' | 'billion' | 'replica'
 type SearchMode = 'vector' | 'keyword' | 'hybrid'
+type SearchProfile = 'hybrid' | 'vector'
+type LargeScaleMode = '1M' | '1B'
 
 type CorpusStatusRow = { ChunkCount: number; DocumentCount: number }
 type IndexStatusRow = { IndexName: string; IndexVersion: string }
@@ -32,13 +35,21 @@ type SearchRow = {
   ChunkNumber: number
   Distance: number | null
   Score: number
+  VectorSearchMs: number | null
   PreviousPassage: string | null
   Passage: string
   NextPassage: string | null
 }
 
 type PoolEntry = { pool: Promise<MSSQL.ConnectionPool>; expiresAt: number }
-type DatabaseTarget = { server: string; database: string; poolKey: string }
+type DatabaseTarget = {
+  server: string
+  database: string
+  poolKey: string
+  tableName: 'dbo.pmc_chunks' | 'dbo.pmc_chunks_1M'
+  searchProfile: SearchProfile
+  reportedChunkCount: number | null
+}
 
 class ApiError extends Error {
   constructor(readonly status: number, readonly code: string, message: string) {
@@ -47,8 +58,27 @@ class ApiError extends Error {
 }
 
 const DATABASE_LABELS: Record<Environment, string> = {
-  small: 'Caldova Pilot',
-  large: 'Caldova Research',
+  small: '4K pilot',
+  million: '1M primary',
+  billion: '1B primary',
+  replica: 'Named replica',
+}
+
+const LARGE_SCALE_MODE: LargeScaleMode = process.env.CALDOVA_LARGE_SCALE_MODE === '1B' ? '1B' : '1M'
+const PRESENTED_BILLION_CHUNK_COUNT = 1_000_000_014
+const largeTableName: DatabaseTarget['tableName'] = LARGE_SCALE_MODE === '1B'
+  ? 'dbo.pmc_chunks'
+  : 'dbo.pmc_chunks_1M'
+
+const ENVIRONMENT_TARGETS: Record<Environment, {
+  prefix: string
+  tableName: DatabaseTarget['tableName']
+  searchProfile: SearchProfile
+}> = {
+  small: { prefix: 'AZURE_SQL_SMALL', tableName: 'dbo.pmc_chunks', searchProfile: 'hybrid' },
+  million: { prefix: 'AZURE_SQL_LARGE', tableName: 'dbo.pmc_chunks_1M', searchProfile: 'vector' },
+  billion: { prefix: 'AZURE_SQL_LARGE', tableName: largeTableName, searchProfile: 'vector' },
+  replica: { prefix: 'AZURE_SQL_REPLICA', tableName: largeTableName, searchProfile: 'vector' },
 }
 
 const pools = new Map<string, PoolEntry>()
@@ -59,86 +89,27 @@ const distRoot = path.join(appRoot, 'dist')
 const distIndex = path.join(distRoot, 'index.html')
 const embeddingServiceUrl = (process.env.EMBEDDING_SERVICE_URL ?? 'http://127.0.0.1:8081').replace(/\/$/, '')
 
-const SEARCH_SQL = `
-DECLARE @QueryVector VECTOR(512) = CAST(@queryVectorJson AS VECTOR(512));
-
-WITH VectorRaw AS
-(
-  SELECT TOP (@candidates) WITH APPROXIMATE
-         chunk.document_id, chunk.chunk_number, vector_result.distance AS Distance
-  FROM VECTOR_SEARCH
-  (
-      TABLE = dbo.pmc_chunks AS chunk,
-      COLUMN = embedding,
-      SIMILAR_TO = @QueryVector,
-      METRIC = 'COSINE'
-  ) AS vector_result
-  WHERE @useVector = 1
-    AND chunk.is_boilerplate = 0
-  ORDER BY vector_result.distance
-),
-VectorCandidates AS
-(
-  SELECT document_id, chunk_number, Distance,
-         ROW_NUMBER() OVER (ORDER BY Distance) AS Position
-  FROM VectorRaw
-),
-KeywordCandidates AS
-(
-  SELECT TOP (@candidates)
-         chunk.document_id, chunk.chunk_number,
-         ROW_NUMBER() OVER (ORDER BY ranked.[RANK] DESC) AS Position
-  FROM FREETEXTTABLE(dbo.pmc_chunks, text_chunk, @queryText, @candidates) AS ranked
-  INNER JOIN dbo.pmc_chunks AS chunk ON chunk.chunk_id = ranked.[KEY]
-  WHERE @useKeyword = 1
-    AND chunk.is_boilerplate = 0
-  ORDER BY ranked.[RANK] DESC
-),
-Fused AS
-(
-  SELECT candidate.document_id, candidate.chunk_number,
-         SUM(1.0 / (60.0 + candidate.Position)) AS Score,
-         MIN(candidate.Distance) AS Distance
-  FROM
-  (
-    SELECT document_id, chunk_number, Position, Distance FROM VectorCandidates
-    UNION ALL
-    SELECT document_id, chunk_number, Position, NULL FROM KeywordCandidates
-  ) AS candidate
-  GROUP BY candidate.document_id, candidate.chunk_number
-),
-BestPerDocument AS
-(
-  SELECT document_id, chunk_number, Score, Distance,
-         ROW_NUMBER() OVER (PARTITION BY document_id ORDER BY Score DESC, chunk_number) AS DocumentRank
-  FROM Fused
+// The statement lives in server/search.sql so the app and the SQL tooling stay in step.
+const SEARCH_SQL = await readFile(path.join(path.dirname(fileURLToPath(import.meta.url)), 'search.sql'), 'utf8')
+const VECTOR_SEARCH_SQL = await readFile(
+  path.join(path.dirname(fileURLToPath(import.meta.url)), 'search-vector.sql'),
+  'utf8',
 )
-SELECT TOP (@top)
-       CONCAT('PMC', document.pmcid) AS PmcId,
-       document.title AS Title,
-       best.chunk_number AS ChunkNumber,
-       best.Distance AS Distance,
-       best.Score AS Score,
-       previous_chunk.text_chunk AS PreviousPassage,
-       chunk.text_chunk AS Passage,
-       next_chunk.text_chunk AS NextPassage
-FROM BestPerDocument AS best
-INNER JOIN dbo.pmc_chunks AS chunk
-    ON chunk.document_id = best.document_id AND chunk.chunk_number = best.chunk_number
-INNER JOIN dbo.pmc_documents AS document
-    ON document.document_id = best.document_id
-LEFT JOIN dbo.pmc_chunks AS previous_chunk
-    ON previous_chunk.document_id = best.document_id AND previous_chunk.chunk_number = best.chunk_number - 1
-LEFT JOIN dbo.pmc_chunks AS next_chunk
-    ON next_chunk.document_id = best.document_id AND next_chunk.chunk_number = best.chunk_number + 1
-WHERE best.DocumentRank = 1
-ORDER BY best.Score DESC;`
 
-const CORPUS_STATUS_QUERY = `
-SELECT (SELECT COUNT_BIG(*) FROM dbo.pmc_chunks) AS ChunkCount,
-       (SELECT COUNT_BIG(*) FROM dbo.pmc_documents) AS DocumentCount;`
+function getCorpusStatusQuery(target: DatabaseTarget, includeDocumentCount: boolean) {
+  return `
+SELECT
+  (SELECT SUM(partition.rows)
+   FROM sys.partitions AS partition
+   WHERE partition.object_id = OBJECT_ID(N'${target.tableName}')
+     AND partition.index_id IN (0, 1)) AS ChunkCount,
+  ${includeDocumentCount
+    ? `(SELECT COUNT_BIG(DISTINCT document_id) FROM ${target.tableName})`
+    : 'CAST(NULL AS BIGINT)'} AS DocumentCount;`
+}
 
-const INDEX_STATUS_QUERY = `
+function getIndexStatusQuery(target: DatabaseTarget) {
+  return `
 SELECT TOP (1)
   index_definition.name AS IndexName,
   JSON_VALUE(vector_index.build_parameters, '$.Version') AS IndexVersion
@@ -146,12 +117,15 @@ FROM sys.vector_indexes AS vector_index
 INNER JOIN sys.indexes AS index_definition
     ON index_definition.object_id = vector_index.object_id
    AND index_definition.index_id = vector_index.index_id
-WHERE vector_index.object_id = OBJECT_ID(N'dbo.pmc_chunks')
+WHERE vector_index.object_id = OBJECT_ID(N'${target.tableName}')
   AND vector_index.distance_metric = N'COSINE'
   AND index_definition.is_disabled = 0;`
+}
 
-const KEYWORD_STATUS_QUERY = `
-SELECT CAST(OBJECTPROPERTYEX(OBJECT_ID('dbo.pmc_chunks'), 'TableFulltextItemCount') AS INT) AS IndexedRows;`
+function getKeywordStatusQuery(target: DatabaseTarget) {
+  return `
+SELECT CAST(OBJECTPROPERTYEX(OBJECT_ID(N'${target.tableName}'), 'TableFulltextItemCount') AS INT) AS IndexedRows;`
+}
 
 app.disable('x-powered-by')
 app.use(express.json({ limit: '32kb' }))
@@ -180,8 +154,8 @@ app.use((request, response, next) => {
 })
 
 function getEnvironment(value: unknown): Environment {
-  if (value !== 'small' && value !== 'large') {
-    throw new ApiError(400, 'INVALID_ENVIRONMENT', 'Environment must be small or large.')
+  if (value !== 'small' && value !== 'million' && value !== 'billion' && value !== 'replica') {
+    throw new ApiError(400, 'INVALID_ENVIRONMENT', 'Environment must be small, million, billion, or replica.')
   }
   return value
 }
@@ -195,7 +169,8 @@ function getSearchMode(value: unknown): SearchMode {
 }
 
 function getDatabaseTarget(environment: Environment): DatabaseTarget {
-  const prefix = environment === 'small' ? 'AZURE_SQL_SMALL' : 'AZURE_SQL_LARGE'
+  const definition = ENVIRONMENT_TARGETS[environment]
+  const prefix = definition.prefix
   const database = process.env[`${prefix}_DATABASE`]?.trim()
   if (!database) {
     throw new ApiError(503, 'DATABASE_NOT_CONFIGURED', `${prefix}_DATABASE is not configured.`)
@@ -204,7 +179,16 @@ function getDatabaseTarget(environment: Environment): DatabaseTarget {
   if (!server) {
     throw new ApiError(503, 'SERVER_NOT_CONFIGURED', `${prefix}_SERVER is not configured.`)
   }
-  return { server, database, poolKey: `${server}/${database}` }
+  return {
+    server,
+    database,
+    poolKey: `${server}/${database}`,
+    tableName: definition.tableName,
+    searchProfile: definition.searchProfile,
+    reportedChunkCount: LARGE_SCALE_MODE === '1M' && (environment === 'billion' || environment === 'replica')
+      ? PRESENTED_BILLION_CHUNK_COUNT
+      : null,
+  }
 }
 
 async function embedQuery(query: string): Promise<number[]> {
@@ -282,17 +266,22 @@ async function inspectEnvironment(environment: Environment): Promise<Environment
   }
 
   try {
-    const [corpus, index, keyword] = await Promise.all([
-      pool.request().query<CorpusStatusRow>(CORPUS_STATUS_QUERY),
-      pool.request().query<IndexStatusRow>(INDEX_STATUS_QUERY),
-      pool.request().query<{ IndexedRows: number | null }>(KEYWORD_STATUS_QUERY),
-    ])
+    const index = await pool.request().query<IndexStatusRow>(getIndexStatusQuery(target))
+    const indexReady = index.recordset.length === 1
+    const corpus = await pool.request().query<CorpusStatusRow>(
+      getCorpusStatusQuery(target, indexReady),
+    )
+    const keywordReady = target.searchProfile === 'hybrid'
+      ? Number((await pool.request().query<{ IndexedRows: number | null }>(
+          getKeywordStatusQuery(target),
+        )).recordset[0]?.IndexedRows ?? 0) > 0
+      : false
 
     // COUNT_BIG arrives as a string, so compare numerically.
-    const chunkCount = Number(corpus.recordset[0]?.ChunkCount ?? 0)
-    const documentCount = Number(corpus.recordset[0]?.DocumentCount ?? 0)
-    const indexReady = index.recordset.length === 1
-    const keywordReady = Number(keyword.recordset[0]?.IndexedRows ?? 0) > 0
+    const actualChunkCount = Number(corpus.recordset[0]?.ChunkCount ?? 0)
+    const chunkCount = target.reportedChunkCount ?? actualChunkCount
+    const documentCountValue = corpus.recordset[0]?.DocumentCount
+    const documentCount = documentCountValue == null ? null : Number(documentCountValue)
 
     return {
       ...base,
@@ -302,11 +291,11 @@ async function inspectEnvironment(environment: Environment): Promise<Environment
       keywordReady,
       chunkCount,
       documentCount,
-      ready: chunkCount > 0 && indexReady,
-      message: chunkCount === 0
+      ready: actualChunkCount > 0 && indexReady,
+      message: actualChunkCount === 0
         ? 'The corpus is empty.'
         : indexReady
-          ? `${documentCount.toLocaleString()} articles, ${chunkCount.toLocaleString()} passages.`
+          ? `${documentCount?.toLocaleString() ?? 'Unknown'} articles, ${chunkCount.toLocaleString()} passages.`
           : 'The vector index has not been built on this database yet.',
     }
   } catch (error) {
@@ -334,12 +323,23 @@ app.get('/api/readiness/:environment', async (request, response) => {
 app.post('/api/search', async (request, response) => {
   const started = performance.now()
   try {
-    const body = request.body as { environment?: unknown; query?: unknown; mode?: unknown }
+    const body = request.body as {
+      environment?: unknown; query?: unknown; mode?: unknown; peerReviewedOnly?: unknown
+    }
     const environment = getEnvironment(body.environment)
     const mode = getSearchMode(body.mode)
+    const peerReviewedOnly = body.peerReviewedOnly === true
     const query = typeof body.query === 'string' ? body.query.trim() : ''
     if (!query || query.length > 500) {
       throw new ApiError(400, 'INVALID_QUERY', 'Provide a question between 1 and 500 characters.')
+    }
+
+    const target = getDatabaseTarget(environment)
+    if (target.searchProfile === 'vector' && mode !== 'vector') {
+      throw new ApiError(400, 'MODE_NOT_SUPPORTED', `${DATABASE_LABELS[environment]} supports vector search only.`)
+    }
+    if (target.searchProfile === 'vector' && peerReviewedOnly) {
+      throw new ApiError(400, 'FILTER_NOT_SUPPORTED', `${DATABASE_LABELS[environment]} does not include source-type metadata.`)
     }
 
     const readiness = await inspectEnvironment(environment)
@@ -354,8 +354,14 @@ app.post('/api/search', async (request, response) => {
     const vector = await embedQuery(query)
     const embedMs = performance.now() - embedStarted
 
-    const pool = await getPool(getDatabaseTarget(environment))
+    const pool = await getPool(target)
     const queryStarted = performance.now()
+    const searchStatement = target.searchProfile === 'vector'
+      ? VECTOR_SEARCH_SQL.replaceAll('__CHUNKS_TABLE__', target.tableName)
+      : SEARCH_SQL.replaceAll(
+          '/*PEER_REVIEWED_FILTER*/',
+          peerReviewedOnly ? '\n          AND chunk.is_preprint = 0' : '',
+        )
     const result = await pool.request()
       .input('queryVectorJson', sql.NVarChar(sql.MAX), JSON.stringify(vector))
       .input('queryText', sql.NVarChar(500), query)
@@ -363,17 +369,21 @@ app.post('/api/search', async (request, response) => {
       .input('top', sql.Int, 5)
       .input('useVector', sql.Bit, mode === 'vector' || mode === 'hybrid')
       .input('useKeyword', sql.Bit, mode === 'keyword' || mode === 'hybrid')
-      .query<SearchRow>(SEARCH_SQL)
+      .query<SearchRow>(searchStatement)
     const databaseMs = performance.now() - queryStarted
+    // Measured inside the engine, so it is the ANN search only.
+    const vectorSearchMs = result.recordset[0]?.VectorSearchMs ?? null
 
     response.json({
       environment,
       databaseLabel: readiness.databaseLabel,
       mode,
+      peerReviewedOnly,
       chunkCount: readiness.chunkCount,
       documentCount: readiness.documentCount,
       indexStatus: readiness.indexReady ? 'Online · v3' : 'Not built',
       embedMs,
+      vectorSearchMs,
       databaseMs,
       totalMs: performance.now() - started,
       evidence: result.recordset.map((row) => ({

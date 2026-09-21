@@ -1,0 +1,12 @@
+@model CreateOrderViewModel
+@{ ViewData["Title"] = "Create order"; }
+<div class="page-heading"><div><span class="eyebrow">WORKFLOW 01 · ORDER INTAKE</span><h1>Create order</h1><p>Reserve stock and set a partner commitment in motion.</p></div></div>
+<form asp-action="Create" method="post" class="form-panel">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <div class="mb-3"><label asp-for="CustomerId" class="form-label">Customer</label><select asp-for="CustomerId" asp-items="Model.Customers" class="form-select"><option value="0">Select a customer</option></select><span asp-validation-for="CustomerId" class="text-danger"></span></div>
+    <div class="mb-3"><label asp-for="ProductId" class="form-label">Product</label><select asp-for="ProductId" asp-items="Model.Products" class="form-select"><option value="0">Select a product</option></select><span asp-validation-for="ProductId" class="text-danger"></span></div>
+    <div class="mb-3"><label asp-for="Quantity" class="form-label"></label><input asp-for="Quantity" class="form-control" /><span asp-validation-for="Quantity" class="text-danger"></span></div>
+    <div class="mb-4"><label asp-for="Notes" class="form-label"></label><textarea asp-for="Notes" class="form-control" rows="3"></textarea><span asp-validation-for="Notes" class="text-danger"></span></div>
+    <div class="d-flex gap-2"><button type="submit" class="btn btn-accent">Submit order</button><a asp-action="Index" class="btn btn-outline-secondary">Cancel</a></div>
+</form>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }
