@@ -14,6 +14,19 @@ __pycache__/
 .env.local
 .env.*.local
 
+# Demo 1 protected local material
+demo1-azure-local/**/*.kubeconfig
+demo1-azure-local/**/*.key
+demo1-azure-local/**/*.pem
+demo1-azure-local/**/*.pfx
+demo1-azure-local/**/*.p12
+demo1-azure-local/**/.env*
+
+# Recording working files (regenerate with the scripts in recording/)
+demo2-mission-critical/recording/frames/
+demo2-mission-critical/recording/audio/
+demo2-mission-critical/recording/build/
+
 # Recordings and media stay outside Git
 *.mp4
 

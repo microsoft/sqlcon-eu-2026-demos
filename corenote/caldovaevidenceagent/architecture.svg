@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="720" viewBox="0 0 1600 720" role="img" aria-labelledby="title description">
+  <title id="title">Caldova Evidence Agent architecture</title>
+  <desc id="description">Microsoft Teams connects to a Microsoft Foundry agent guided by an evidence review skill. The agent calls a Data API Builder SQL MCP Server, which executes a search evidence stored procedure. The procedure uses an Azure OpenAI embedding model and vector search over an Azure SQL research database.</desc>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#0078d4"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#107c10"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#5c2d91"/>
+    </marker>
+    <style>
+      .title { font: 700 30px "Segoe UI", sans-serif; fill: #000; }
+      .subtitle { font: 400 16px "Segoe UI", sans-serif; fill: #000; }
+      .box-title { font: 700 18px "Segoe UI", sans-serif; fill: #000; text-anchor: middle; }
+      .box-copy { font: 400 16px "Segoe UI", sans-serif; fill: #000; text-anchor: middle; }
+      .flow-label { font: 400 13px "Segoe UI", sans-serif; fill: #000; text-anchor: middle; }
+      .footer { font: 600 16px "Segoe UI", sans-serif; fill: #000; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="720" fill="#ffffff"/>
+  <text class="title" x="60" y="60">Caldova Evidence Agent</text>
+  <text class="subtitle" x="60" y="95">A governed evidence workflow from Microsoft Teams to vector search in Azure SQL</text>
+
+  <rect x="70" y="270" width="240" height="130" rx="10" fill="#99e9f2" stroke="#0c8599" stroke-width="2"/>
+  <text class="box-title" x="190" y="320">Microsoft Teams</text>
+  <text class="box-copy" x="190" y="355">User conversation</text>
+
+  <rect x="430" y="265" width="280" height="140" rx="10" fill="#e8daef" stroke="#5c2d91" stroke-width="2"/>
+  <text class="box-title" x="570" y="310">Microsoft Foundry Agent</text>
+  <text class="box-copy" x="570" y="345">Plans, investigates,</text>
+  <text class="box-copy" x="570" y="370">and synthesizes</text>
+
+  <rect x="430" y="130" width="280" height="90" rx="10" fill="#e8daef" stroke="#5c2d91" stroke-width="2"/>
+  <text class="box-title" x="570" y="170">Evidence Review Skill</text>
+  <text class="box-copy" x="570" y="197">Grounding and citation workflow</text>
+
+  <rect x="830" y="265" width="280" height="140" rx="10" fill="#fff4ce" stroke="#f7630c" stroke-width="2"/>
+  <text class="box-title" x="970" y="305">DAB 2.0</text>
+  <text class="box-title" x="970" y="330">SQL MCP Server</text>
+  <text class="box-copy" x="970" y="372">Governed read-only tools</text>
+
+  <rect x="1230" y="265" width="280" height="140" rx="10" fill="#dff6dd" stroke="#107c10" stroke-width="2"/>
+  <text class="box-title" x="1370" y="305">search_evidence</text>
+  <text class="box-copy" x="1370" y="334">Stored procedure</text>
+  <text class="box-copy" x="1370" y="370">Embeds query + retrieves evidence</text>
+
+  <rect x="830" y="500" width="280" height="120" rx="10" fill="#cfe4fa" stroke="#0078d4" stroke-width="2"/>
+  <text class="box-title" x="970" y="540">Azure OpenAI</text>
+  <text class="box-copy" x="970" y="568">Embedding model</text>
+  <text class="box-copy" x="970" y="592">512 dimensions</text>
+
+  <rect x="1200" y="500" width="340" height="120" rx="10" fill="#cfe4fa" stroke="#0078d4" stroke-width="2"/>
+  <text class="box-title" x="1370" y="537">Azure SQL Database: research</text>
+  <text class="box-copy" x="1370" y="568">44 articles / 4,076 passages</text>
+  <text class="box-copy" x="1370" y="592">VECTOR_SEARCH + DiskANN</text>
+
+  <line x1="310" y1="335" x2="425" y2="335" stroke="#0078d4" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <text class="flow-label" x="370" y="315">conversation</text>
+
+  <line x1="710" y1="335" x2="825" y2="335" stroke="#0078d4" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <text class="flow-label" x="770" y="315">tool call</text>
+
+  <line x1="1110" y1="335" x2="1225" y2="335" stroke="#0078d4" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <text class="flow-label" x="1170" y="315">execute</text>
+
+  <line x1="570" y1="220" x2="570" y2="260" stroke="#5c2d91" stroke-width="2" marker-end="url(#arrow-purple)"/>
+
+  <line x1="1370" y1="405" x2="1370" y2="495" stroke="#107c10" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <text class="flow-label" x="1430" y="455">VECTOR_SEARCH</text>
+
+  <path d="M1230 370 C1175 410, 1140 465, 1105 520" fill="none" stroke="#107c10" stroke-width="2" marker-end="url(#arrow-green)"/>
+  <text class="flow-label" x="1150" y="445">AI_GENERATE_EMBEDDINGS</text>
+
+  <text class="footer" x="800" y="682">Managed identity end to end  |  No arbitrary SQL  |  Evidence returned with PMCID attribution</text>
+</svg>

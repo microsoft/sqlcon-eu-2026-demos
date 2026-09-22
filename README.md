@@ -5,18 +5,25 @@ Each demo closes a chapter, and demo 3 ties the first two together.
 
 | Demo | Title | Slide title | Owner |
 |---|---|---|---|
-| 1 | Sovereign Private Cloud with SQL Server | Your data and AI, on infrastructure you control | not in this repo yet |
+| 1 | Sovereign Private Cloud with SQL Server | Your data and AI, on infrastructure you control | [demo1-azure-local](demo1-azure-local) |
 | 2 | Mission-Critical, at Any Scale | Start small. Scale without re-architecting. | [demo2-mission-critical](demo2-mission-critical) |
 | 3 | Your Data Estate Running Itself | From estate-wide signal to application fix | [demo3-estate-running-itself](demo3-estate-running-itself) |
 
-Two independent corenote segments also live here. They are separate from the numbered
-keynote demos and from each other:
+Additional corenote segments also live here. They are separate from the numbered
+keynote demos:
 
 | Segment | Format | Repository status | Start here |
 |---|---|---|---|
 | SSMS what's new: From Problem to Answer | Recorded; reproducible | Setup, storyboard, SQL assets, validation, teardown, and fallback guidance are present | [Demo package](corenote/ssms-whatsnew/README.md) |
 | SSMS what's new: Five Customer Asks We Delivered | Alternate recorded concept | Storyboard and SQL assets are present; feature labels, exact interactions, and final recording still need validation | [Alternate storyboard](corenote/ssms-whatsnew/demo/version-2-five-customer-asks.md) |
 | SSMS migration and agentic modernization | Existing 2:09 recording | Talk track and transcript are present. The source application, database, SSMS assessment setup, migration prompt, and replay instructions are not in this repository | [Recording handoff](corenote/migration/README.md) |
+
+The [Caldova Hands-Free Indexing demo](corenote/handsfreeindexing) follows one
+unchanged dashboard query through the Azure SQL index lifecycle. Automatic tuning
+creates a covering index from workload evidence, controlled insert/delete activity
+makes it sparse, and Automatic Index Compaction repacks eligible leaf pages. The
+demo pairs live query duration and logical reads with persisted physical index
+telemetry; it does not use synthetic delays, query hints, or a manual index fallback.
 
 ## Why one repository
 
@@ -31,6 +38,16 @@ needs to look like the keynote app should import those tokens rather than restyl
 ## Layout
 
 ```
+corenote/
+  handsfreeindexing/          Azure SQL automatic indexing and index compaction
+    app/                      Live operations dashboard backed by Azure SQL
+    deploy/                   Infrastructure, workload, lifecycle, and cleanup scripts
+    DEMO-RUNBOOK.md           Lifecycle gates and presentation guidance
+demo1-azure-local/            SQL Server 2025 with Foundry Local on Azure Local
+  app/                        ASP.NET Core transfer-center application
+  database/                   Ordered deployment and validation scripts
+  setup/                      Azure Local gateway setup and verification
+  hyperscale-foundry/         Optional Azure SQL + Microsoft Foundry variant
 demo2-mission-critical/     Vector search on Hyperscale, serverless economics
   app/                      React client + Express API (Caldova)
   database/                 Approval-gated T-SQL and deployment scripts
@@ -80,7 +97,6 @@ Each demo folder has its own README with prerequisites and run steps. Start ther
 
 The repository is usable for internal rehearsal but is not ready to publish unchanged:
 
-- Demo 1 is not present.
 - Demo 3 is explicitly a starting point.
 - The SSMS what's new Version 1 workflow must be validated in the final SSMS build and
   event database; fallback screenshots and recording links are still external.
