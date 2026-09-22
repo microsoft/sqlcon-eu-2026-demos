@@ -230,9 +230,10 @@ else { Write-Skip 'Already exists' }
 Invoke-Az @('webapp', 'identity', 'assign', '--resource-group', $ResourceGroup, '--name', $AppName, '--output', 'json') | Out-Null
 Invoke-Az @('webapp', 'config', 'set', '--resource-group', $ResourceGroup, '--name', $AppName,
     '--always-on', 'true', '--ftps-state', 'Disabled', '--min-tls-version', '1.2',
-    '--http20-enabled', 'true', '--net-framework-version', 'v10.0', '--output', 'json') | Out-Null
+    '--http20-enabled', 'true', '--web-sockets-enabled', 'true',
+    '--net-framework-version', 'v10.0', '--output', 'json') | Out-Null
 Invoke-Az @('webapp', 'update', '--resource-group', $ResourceGroup, '--name', $AppName,
-    '--https-only', 'true', '--client-affinity-enabled', 'false', '--output', 'json') | Out-Null
+    '--https-only', 'true', '--client-affinity-enabled', 'true', '--output', 'json') | Out-Null
 
 $integration = Invoke-Az @('webapp', 'vnet-integration', 'list', '--resource-group', $ResourceGroup,
     '--name', $AppName, '--output', 'json')
