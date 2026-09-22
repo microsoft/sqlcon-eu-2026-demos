@@ -2,6 +2,12 @@
 
 Use this folder on a new Windows VM when the existing `SJ-SQLAI` AKS Arc cluster, `phi-35-mini` deployment, MetalLB address, and external Foundry Local Gateway are already running.
 
+To have VS Code validate prerequisites and guide this setup, open the repository
+with GitHub Copilot Chat in **Agent** mode and run
+`/prepare-keynote-demo-1`. The prompt uses the
+[Demo 1 skill](../../.github/skills/run-keynote-demo-1/SKILL.md), stops before
+elevated or data-changing actions, and never asks for secret values in chat.
+
 This workflow uses the direct endpoint:
 
 ```text
