@@ -37,6 +37,22 @@ The [corenote collection](corenote) includes:
 | [corenote](corenote) | Corenote demo packages and workshops |
 | [shared](shared) | Shared design system and reusable guidance |
 
+## Run with GitHub Copilot
+
+Open this repository in VS Code with GitHub Copilot Chat, select **Agent** mode,
+and type `/` to run one of the workspace prompts:
+
+| Prompt | Purpose |
+|---|---|
+| `/prepare-keynote-demo-1` | Prepare and validate Caldova Regional Care on Azure Local |
+| `/rehearse-keynote-demo-1` | Walk through the locked Keynote Demo 1 presenter flow |
+| `/prepare-handsfree-indexing` | Prepare, deploy, and verify the Hands-Free Indexing environment |
+| `/rehearse-handsfree-indexing` | Walk through automatic indexing and compaction one measured phase at a time |
+
+The prompts use repository skills in [.github/skills](.github/skills). They read
+the current runbooks, use the checked-in scripts, protect credentials, and stop
+for confirmation before elevated, billable, data-changing, or destructive work.
+
 ## Getting started
 
 Open the README in the demo folder you want to run. Each demo documents its own

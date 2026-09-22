@@ -13,6 +13,22 @@ It supports four related experiences:
   Microsoft Foundry.
 4. Register the Azure Local Phi model in VS Code Chat.
 
+## Run with GitHub Copilot
+
+Open the repository in VS Code with GitHub Copilot Chat and select **Agent**
+mode. Type `/` and choose:
+
+- `/prepare-keynote-demo-1` to validate prerequisites and guide the documented
+  VM setup, database deployment, application build, and health checks.
+- `/rehearse-keynote-demo-1` to run non-destructive preflight and walk through
+  the locked presenter sequence one beat at a time.
+
+The prompts use the
+[Run Keynote Demo 1 skill](../.github/skills/run-keynote-demo-1/SKILL.md).
+The skill never displays credential material, does not provision or modify the
+existing Azure Local environment, and requires confirmation before elevated,
+data-changing, or live-model actions.
+
 The live environment uses the authenticated Azure Local Gateway directly:
 
 ```text

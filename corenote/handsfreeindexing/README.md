@@ -14,6 +14,22 @@ count and density with the latest dashboard duration and logical reads.
 
 The app executes live SQL and reads persisted physical telemetry. It contains no recorded calibration frames, alternate baseline table, manual index fallback, forced plan, query hint, or synthetic delay.
 
+## Run with GitHub Copilot
+
+Open the repository in VS Code with GitHub Copilot Chat and select **Agent**
+mode. Type `/` and choose:
+
+- `/prepare-handsfree-indexing` to validate prerequisites and configuration,
+	obtain approval for billable deployment, run the deployment wrappers, and
+	verify the environment.
+- `/rehearse-handsfree-indexing` to walk through the runbook one measured phase
+	at a time without unattended workload loops or synthetic results.
+
+The prompts use the
+[Run Hands-Free Indexing skill](../../.github/skills/run-handsfree-indexing/SKILL.md).
+The skill preserves the automatic-index requirements and stops for confirmation
+before database initialization, bloat, compaction, or resource-group cleanup.
+
 ## Prerequisites
 
 - PowerShell 7

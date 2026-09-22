@@ -35,6 +35,21 @@ The guided workshop covers assessment, focused remediation, infrastructure
 deployment, offline BACPAC migration, Microsoft Entra-only authentication,
 managed identity, workflow validation, and cleanup.
 
+## Run Hands-Free Indexing with GitHub Copilot
+
+Open the repository in VS Code with GitHub Copilot Chat in **Agent** mode, type
+`/`, and choose:
+
+- `/prepare-handsfree-indexing` to validate configuration, deploy with approval
+	gates, and verify the Azure environment.
+- `/rehearse-handsfree-indexing` to guide the measured automatic-indexing and
+	Automatic Index Compaction lifecycle one phase at a time.
+
+Both prompts use the
+[Run Hands-Free Indexing skill](../.github/skills/run-handsfree-indexing/SKILL.md),
+which preserves the runbook invariants and requires confirmation before
+billable, data-changing, or destructive actions.
+
 ## Getting started
 
 Choose a demo above and follow its README. These demos can create billable Azure
