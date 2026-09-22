@@ -36,8 +36,7 @@ demo2-mission-critical/     Vector search on Hyperscale, serverless economics
   database/                 Approval-gated T-SQL and deployment scripts
   workload/                 Scheduled job that exercises auto-pause and resume
   staging/                  Deterministic source and embedding packages
-  recording/                Frame capture and video assembly
-  docs/                     Demo plan, stage script, recording script
+  docs/                     Stage script
 demo3-estate-running-itself/
   app/                      Operations view sharing the demo 2 design system
   database/                 Invoice schema, seed, and the anti-pattern queries
@@ -49,7 +48,12 @@ corenote/ssms-whatsnew/
   setup/                    Public environment setup and rehearsal guidance
   demo/                     Recorded storyboard and alternate demo concept
   assets/                   Setup, query, validation, and teardown SQL
-corenote/migration/          Talk track and source transcript for the migration recording
+corenote/migration/
+  src/                      Nandiyo Logistics ASP.NET Core application
+  database/                 Assessment inventory and remediation scripts
+  infra/                    App Service and Azure SQL Bicep
+  skills/                   SQL migration and assessment skills
+  docs/                     End-to-end modernization workshop
 ```
 
 Folders are organized by demo ownership. Add a new keynote demo in its own top-level
@@ -80,9 +84,9 @@ The repository is usable for internal rehearsal but is not ready to publish unch
 - Demo 3 is explicitly a starting point.
 - The SSMS what's new Version 1 workflow must be validated in the final SSMS build and
   event database; fallback screenshots and recording links are still external.
-- The SSMS migration segment can replay its existing recording, but it cannot be recreated
-  from this repository until the application, database, assessment setup, migration prompt,
-  and operator instructions are supplied or explicitly declared private production assets.
+- The SSMS migration segment is reproducible. `corenote/migration` ships the application,
+  database, assessment and remediation scripts, infrastructure, migration skills, and an
+  end-to-end workshop guide. The original recording stays outside Git.
 - Demo 2 targets 1M rows. It was built against a 1B-row index, but 1M is what ships here
   so the demo stays repeatable.
 - Demo recordings must remain outside Git. Publish them through an approved media location

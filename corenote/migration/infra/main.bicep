@@ -12,7 +12,6 @@ param entraAdminObjectId string
 @description('Create Operations in Bicep. Leave false when a BACPAC import will create it.')
 param createDatabase bool = false
 
-@secure()
 @description('Optional public client IP for the local BACPAC import. Remove its firewall rule after migration.')
 param clientIpAddress string = ''
 
@@ -34,10 +33,14 @@ resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' = {
       azureADOnlyAuthentication: true
     }
     minimalTlsVersion: '1.2'
+    // Lab-only: public access keeps the BACPAC import workable without a private
+    // endpoint or self-hosted runtime. Use a private endpoint for real workloads.
     publicNetworkAccess: 'Enabled'
   }
 }
 
+// Lab-only: 0.0.0.0 is the Azure-services rule, which lets App Service reach the
+// server without a VNet. Replace with a private endpoint for real workloads.
 resource allowAzureServices 'Microsoft.Sql/servers/firewallRules@2023-08-01-preview' = {
   parent: sqlServer
   name: 'AllowAzureServices'
@@ -47,6 +50,7 @@ resource allowAzureServices 'Microsoft.Sql/servers/firewallRules@2023-08-01-prev
   }
 }
 
+// Temporary: delete this rule as soon as the BACPAC import finishes.
 resource allowMigrationClient 'Microsoft.Sql/servers/firewallRules@2023-08-01-preview' = if (!empty(clientIpAddress)) {
   parent: sqlServer
   name: 'AllowMigrationClient'
