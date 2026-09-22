@@ -1,7 +1,7 @@
 # Demo 3: Your Data Estate Running Itself
 
 **Slide title:** From estate-wide signal to application fix
-**Presenters:** Patrick (data professional) and Anna (application developer)
+**Roles:** a data professional and an application developer
 **Through line:** Database Hub shows what needs attention. The Database Agent detects the
 slow query. GitHub Copilot explains and recommends. The human decides and acts.
 
@@ -9,8 +9,9 @@ This folder is a starting point, not a finished demo. It gives you an applicatio
 looks like the demo 2 app, a database with a realistic anti-pattern, and the queries that
 make the cause visible in SSMS.
 
-Patrick: start with [docs/patrick-handoff.md](docs/patrick-handoff.md) for the current
-stage path, rehearsal gates, and the decisions that still need the team's input.
+If you are presenting the data-professional beat, start with
+[docs/presenter-runbook.md](docs/presenter-runbook.md) for the stage path and the
+rehearsal gates.
 
 ## What the app is
 
@@ -67,8 +68,8 @@ one explainable cause, one small application change. `GET /api/invoices` already
 
 ## Set up
 
-1. **Create a Fabric SQL database** (Patrick's script filters Database Hub down to Fabric
-   SQL, so put this one there). Any Azure SQL database works for rehearsal.
+1. **Create a Fabric SQL database** (the Database Hub view in this demo is filtered to
+   Fabric SQL, so put this one there). Any Azure SQL database works for rehearsal.
 
 2. **Create the schema and seed it.** Two million invoices makes the scan slow enough to
    feel in the UI without a long seed.
@@ -114,14 +115,6 @@ counts differ by orders of magnitude, which is the number worth pointing at.
 ## Building more views
 
 If you need another screen, read [shared/SKILL.md](../shared/SKILL.md) and hand it to
-Copilot. It has the design rules, the connection pattern, and the traps that cost us time
+Copilot. It has the design rules, the connection pattern, and the traps that cost time
 during demo 2 (the `mssql` CommonJS import, `COUNT_BIG` returning a string, Docker file
 permissions from OneDrive, and the Container Apps identity ordering).
-
-## Open questions for the team
-
-- Which database backs this demo: a third Fabric SQL database, or the demo 2 Hyperscale
-  database? Bob raised whether the app should span more than one so Database Hub's estate
-  view earns its place.
-- Final wording for the Database Agent boundary. The script says "read only, reversible,
-  and never acts on the database by itself", which should stay verbatim.

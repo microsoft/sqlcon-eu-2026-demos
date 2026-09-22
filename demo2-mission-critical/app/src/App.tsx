@@ -15,7 +15,7 @@ import './App.css'
 // Empty when the API is served from the same origin; set when the UI is hosted by Fabric.
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 
-type Environment = 'small' | 'million' | 'billion' | 'replica'
+type Environment = 'small' | 'million' | 'replica'
 type SearchMode = 'vector' | 'keyword' | 'hybrid'
 type ResultView = 'evidence' | 'sql'
 
@@ -32,6 +32,7 @@ type Evidence = {
 type SearchResponse = {
   environment: Environment
   databaseLabel: string
+  tableName: string
   mode: SearchMode
   chunkCount: number
   documentCount: number
@@ -46,6 +47,7 @@ type SearchResponse = {
 type ReadinessResponse = {
   environment: Environment
   databaseLabel: string
+  tableName: string
   configured: boolean
   reachable: boolean
   indexReady: boolean
@@ -169,18 +171,16 @@ ORDER BY vector_result.distance;
 const environmentButtons: Record<Environment, string> = {
   small: '4K',
   million: '1M',
-  billion: '1B',
   replica: 'Named Replica',
 }
 
 const environmentTables: Record<Environment, string> = {
   small: 'dbo.pmc_chunks',
   million: 'dbo.pmc_chunks_1M',
-  billion: 'dbo.pmc_chunks',
-  replica: 'dbo.pmc_chunks',
+  replica: 'dbo.pmc_chunks_1M',
 }
 
-const visibleEnvironments: Environment[] = ['small', 'billion', 'replica']
+const visibleEnvironments: Environment[] = ['small', 'million', 'replica']
 
 const modeLabels: Record<SearchMode, string> = {
   vector: 'Vector',
@@ -193,7 +193,8 @@ function formatCount(value: number | null | undefined) {
 }
 
 function App() {
-  const [environment, setEnvironment] = useState<Environment>('small')
+  const [environment, setEnvironment] = useState<Environment>('million')
+  const [primaryLabel, setPrimaryLabel] = useState('1M')
   const mode: SearchMode = environment === 'small' ? 'hybrid' : 'vector'
   const [peerReviewedOnly, setPeerReviewedOnly] = useState(false)
   const [query, setQuery] = useState(DEMO_QUERIES[0])
@@ -215,6 +216,9 @@ function App() {
       })
       .then((value) => {
         setReadiness(value)
+        if (value.environment === 'million') {
+          setPrimaryLabel(value.databaseLabel.replace(/ primary$/, ''))
+        }
         setNotice(value.ready ? value.message : `${value.databaseLabel}: ${value.message}`)
       })
       .catch(() => {
@@ -226,7 +230,6 @@ function App() {
 
   const chooseEnvironment = (next: Environment) => {
     setEnvironment(next)
-    if (next !== 'small') setPeerReviewedOnly(false)
     setMetrics(null)
     setReadiness(null)
     setEvidence([])
@@ -246,7 +249,12 @@ function App() {
       const response = await fetch(`${API_BASE_URL}/api/search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ environment, query: trimmed, mode, peerReviewedOnly }),
+        body: JSON.stringify({
+          environment,
+          query: trimmed,
+          mode,
+          peerReviewedOnly: environment === 'small' && peerReviewedOnly,
+        }),
       })
       if (!response.ok) {
         const error = (await response.json().catch(() => ({}))) as { message?: string }
@@ -310,10 +318,14 @@ function App() {
                     onClick={() => chooseEnvironment(option)}
                     aria-pressed={environment === option}
                   >
-                    {environmentButtons[option]}
+                    {option === 'million' ? primaryLabel : environmentButtons[option]}
                   </button>
                 ))}
               </div>
+              <p className="scale-note">
+                1M is the indexed default. The setup guide covers 10K and 100K for a
+                lower-cost rehearsal.
+              </p>
               <span className="control-label">Evidence</span>
               <div className="segment-group">
                 <button
@@ -367,7 +379,7 @@ function App() {
             </div>
             <div className="metric">
               <BookOpen size={18} />
-              <span>Rows searched<strong>{formatCount(metrics?.chunkCount ?? readiness?.chunkCount)}</strong></span>
+              <span>Rows searched<strong>{formatCount(isSearching ? null : metrics?.chunkCount)}</strong></span>
             </div>
             <div className="metric featured">
               <Clock3 size={18} />
@@ -412,7 +424,10 @@ function App() {
                 ? SEARCH_SQL
                     .replace('__VECTOR_FILTER__', peerReviewedOnly ? '\n    AND chunk.is_preprint = 0' : '')
                     .replace('__KEYWORD_FILTER__', peerReviewedOnly ? '\n  AND chunk.is_preprint = 0' : '')
-                : VECTOR_SEARCH_SQL.replace('__CHUNKS_TABLE__', environmentTables[environment])}</code></pre>
+                : VECTOR_SEARCH_SQL.replace(
+                    '__CHUNKS_TABLE__',
+                    metrics?.tableName ?? readiness?.tableName ?? environmentTables[environment],
+                  )}</code></pre>
             </div>
           ) : evidence.length > 0 && selectedEvidence ? (
             <div className="evidence-layout">

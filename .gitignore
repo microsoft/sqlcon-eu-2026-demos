@@ -27,6 +27,9 @@ demo2-mission-critical/recording/frames/
 demo2-mission-critical/recording/audio/
 demo2-mission-critical/recording/build/
 
+# Recordings and media stay outside Git
+*.mp4
+
 # OS
 .DS_Store
 demo3-estate-running-itself/app/node_modules/
