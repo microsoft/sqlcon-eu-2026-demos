@@ -20,6 +20,21 @@ The completed solution uses:
 > migration firewall rule immediately after import, and delete the resource group when
 > you finish.
 
+### What it costs
+
+Two resources drive nearly all of the cost, and both bill while they exist rather than
+per request:
+
+| Resource | SKU | Notes |
+|---|---|---|
+| App Service plan | `P1v3` Linux | Billed hourly whether or not the app is in use |
+| Azure SQL Database | Hyperscale `HS_Gen5`, 2 vCores | Compute billed hourly, plus storage |
+
+Check current rates for your region in the
+[Azure pricing calculator](https://azure.microsoft.com/pricing/calculator/) before you
+deploy. Deleting the resource group is what stops the charges; stopping the App Service
+does not stop the Hyperscale compute bill.
+
 ## Business workflows
 
 1. **Order intake** reserves inventory and creates a customer commitment.

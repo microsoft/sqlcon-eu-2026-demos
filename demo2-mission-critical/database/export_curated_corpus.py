@@ -20,8 +20,6 @@ from deploy_common_schema import connect, database_token
 
 ROOT = Path(__file__).parents[1]
 DEFAULT_OUTPUT = ROOT / "staging" / "pmc-curated-v1"
-DEFAULT_SERVER = "vbnech-large-server.database.windows.net"
-DEFAULT_DATABASE = "vbench_large"
 
 # Each demo question maps to title keywords that reliably surface relevant articles.
 TOPICS: list[tuple[str, list[str]]] = [
@@ -183,8 +181,8 @@ def export(args: argparse.Namespace) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--server", default=DEFAULT_SERVER)
-    parser.add_argument("--database", default=DEFAULT_DATABASE)
+    parser.add_argument("--server", required=True, help="Source logical server FQDN.")
+    parser.add_argument("--database", required=True, help="Source database holding the corpus.")
     parser.add_argument("--docs-per-topic", type=int, default=3)
     parser.add_argument("--max-chunks", type=int, default=10_000)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)

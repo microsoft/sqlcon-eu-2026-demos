@@ -26,32 +26,31 @@ while a server-side allowlist chooses the compatible table and query profile.
 excludes the round trip and the embedding call. The UI reports it separately from total
 time.
 
-## Readiness and recording scale
+## Readiness and demo scale
 
 Every target is checked before it is queried. If the database is unreachable or the index
 required by that target is missing, the app reports why and leaves the timings as `--`. It
 does not invent a timing. Unsupported modes and filters are also rejected instead of silently
 changing their meaning.
 
-`CALDOVA_LARGE_SCALE_MODE` makes the review-recording setup explicit:
+The app opens on the 1M primary. This is the recommended default for trying the demo in
+your own subscription: it is large enough to make indexed vector search credible while
+staying practical to load and index.
 
-- `1M` (default) queries the indexed `dbo.pmc_chunks_1M` table for both visible large targets
-   and presents `1,000,000,014` as **Rows searched**. This is a stage projection for recording,
-   not a measured scan cardinality or a 1B latency benchmark.
-- `1B` queries `dbo.pmc_chunks` for both large targets, reports its measured row count, and
-   requires a real vector index on that table. Readiness fails closed until that index exists.
+- `CALDOVA_DEMO_SCALE=1M` uses the indexed `dbo.pmc_chunks_1M` table.
+- `CALDOVA_DEMO_SCALE=10K` or `100K` uses `dbo.pmc_chunks_demo`. Create it with
+   `database/create-demo-scale-table.sql`, setting `@TargetRows` to the matching value.
 
-Restart the API after changing the value. The standalone `1M` API key remains available for
-diagnostics, but the UI hides it so the recording flow is `4K` → `1B` → `Named Replica`.
+Restart the API after changing the value. The API reports the actual row count and never
+substitutes a presentation count.
 
 ## Environments
 
 | Key | UI label | Database table | Search profile | Verified state |
 |---|---|---|---|---|
-| `small` | `4K` | `research.dbo.pmc_chunks` | Hybrid | 4,076 passages, ready |
-| `million` | Hidden | `vbench_large.dbo.pmc_chunks_1M` | Vector | Diagnostic API target |
-| `billion` | `1B` | Selected by `CALDOVA_LARGE_SCALE_MODE` | Vector | 1M recording projection or real 1B |
-| `replica` | `Named Replica` | Selected by `CALDOVA_LARGE_SCALE_MODE` | Vector | 1M recording projection or real 1B |
+| `small` | `4K` | `dbo.pmc_chunks` on the pilot | Hybrid | 4,076 passages, ready |
+| `million` | `1M` by default | `dbo.pmc_chunks_1M` or `dbo.pmc_chunks_demo` | Vector | Primary demo target |
+| `replica` | `Named Replica` | Same demo table as `million` | Vector | Read-only compute |
 
 The named replica shares the primary's storage and 1M vector index but has its own compute,
 so reading through it does not compete with work on the primary. Table identifiers are not
@@ -62,19 +61,19 @@ accepted from API input; they come only from the fixed mapping in `server/index.
 The API reads these at startup and does not load `.env` files automatically:
 
 ```bash
-export AZURE_SQL_SMALL_SERVER='antho-caldova.database.windows.net'
-export AZURE_SQL_SMALL_DATABASE='research'
-export AZURE_SQL_LARGE_SERVER='vbnech-large-server.database.windows.net'
-export AZURE_SQL_LARGE_DATABASE='vbench_large'
-export AZURE_SQL_REPLICA_SERVER='vbnech-large-server.database.windows.net'
-export AZURE_SQL_REPLICA_DATABASE='research-replica'
-export CALDOVA_LARGE_SCALE_MODE='1M' # recording projection; use 1B for the real table
+export AZURE_SQL_SMALL_SERVER='<pilot-server>.database.windows.net'
+export AZURE_SQL_SMALL_DATABASE='<pilot-database>'
+export AZURE_SQL_LARGE_SERVER='<scale-server>.database.windows.net'
+export AZURE_SQL_LARGE_DATABASE='<scale-database>'
+export AZURE_SQL_REPLICA_SERVER='<scale-server>.database.windows.net'
+export AZURE_SQL_REPLICA_DATABASE='<replica-name>'
+export CALDOVA_DEMO_SCALE='1M' # supported: 10K, 100K, 1M
 export EMBEDDING_SERVICE_URL='http://127.0.0.1:8081'
 ```
 
 An environment with no server or database configured reports "not configured" rather than
-failing at query time. Local runs use the Azure CLI credential; the deployment uses the
-`caldova-workload-id` managed identity via `AZURE_CLIENT_ID`.
+failing at query time. Local runs use the Azure CLI credential; a deployment uses its
+assigned managed identity via `AZURE_CLIENT_ID`.
 
 ## Run locally
 
@@ -113,5 +112,6 @@ Open `http://127.0.0.1:8000`. For development with hot reload, run `npm run dev:
 ## Deployment
 
 The app and the embedding service run as two containers in one Azure Container Apps
-replica, so they communicate over loopback. See
-[caldova-app.yaml](../deploy/caldova-app.yaml).
+replica, so they communicate over loopback. Copy
+[caldova-app.yaml.example](../deploy/caldova-app.yaml.example), replace every `REPLACE_*`
+value, and keep the resulting environment-specific file out of Git.

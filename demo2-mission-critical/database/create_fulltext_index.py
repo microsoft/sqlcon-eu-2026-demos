@@ -12,9 +12,6 @@ import time
 
 from deploy_common_schema import connect, database_token
 
-APPROVED_SERVER = "antho-caldova.database.windows.net"
-APPROVED_DATABASE = "research"
-
 STATEMENTS = [
     ("catalog", """
         IF NOT EXISTS (SELECT 1 FROM sys.fulltext_catalogs WHERE name = 'CaldovaCatalog')
@@ -37,13 +34,10 @@ SELECT CAST(FULLTEXTCATALOGPROPERTY('CaldovaCatalog', 'ItemCount') AS INT) AS It
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--server", default=APPROVED_SERVER)
-    parser.add_argument("--database", default=APPROVED_DATABASE)
+    parser.add_argument("--server", required=True, help="Logical server FQDN.")
+    parser.add_argument("--database", required=True)
     parser.add_argument("--wait-seconds", type=int, default=300)
     args = parser.parse_args()
-
-    if args.server != APPROVED_SERVER or args.database != APPROVED_DATABASE:
-        parser.error("This script may target only antho-caldova/research.")
 
     with connect(args.server, args.database, database_token()) as connection:
         connection.timeout = 600

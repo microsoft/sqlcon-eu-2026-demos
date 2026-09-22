@@ -13,16 +13,9 @@ SET NOCOUNT ON;
 SET XACT_ABORT ON;
 
 DECLARE @DeploymentApproved BIT = 0;
-DECLARE @ServerName NVARCHAR(128) = LOWER(CONVERT(NVARCHAR(128), SERVERPROPERTY('ServerName')));
 
 IF @DeploymentApproved <> 1
     THROW 51250, 'Deployment is blocked. Set @DeploymentApproved = 1 only after explicit approval.', 1;
-
-IF LOWER(DB_NAME()) <> N'research'
-    THROW 51251, 'This schema may be applied only to the research database.', 1;
-
-IF @ServerName <> N'antho-caldova' AND @ServerName NOT LIKE N'antho-caldova.%'
-    THROW 51252, 'This schema may be applied only to the antho-caldova logical server.', 1;
 
 ALTER DATABASE CURRENT SET COMPATIBILITY_LEVEL = 170;
 
