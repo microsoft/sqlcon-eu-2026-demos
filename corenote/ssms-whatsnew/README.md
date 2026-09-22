@@ -13,7 +13,7 @@ Start with the [environment setup and rehearsal guide](setup/README.md), then fo
 ## Package Structure
 
 ```text
-ssms-whatsnew/
+corenote/ssms-whatsnew/
 ├── README.md
 ├── setup/
 │   └── README.md

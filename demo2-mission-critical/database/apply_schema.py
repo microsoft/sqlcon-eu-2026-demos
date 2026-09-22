@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply an approval-gated Potion 512 template to antho-caldova/research."""
+"""Apply an approval-gated Potion 512 template to the target database."""
 
 from __future__ import annotations
 
@@ -9,20 +9,15 @@ from pathlib import Path
 
 from deploy_common_schema import connect, database_token
 
-APPROVED_SERVER = "antho-caldova.database.windows.net"
-APPROVED_DATABASE = "research"
 GATE_PATTERN = re.compile(r"(DECLARE\s+@DeploymentApproved\s+BIT\s*=\s*)0(\s*;)", re.IGNORECASE)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("template", type=Path)
-    parser.add_argument("--server", default=APPROVED_SERVER)
-    parser.add_argument("--database", default=APPROVED_DATABASE)
+    parser.add_argument("--server", required=True, help="Logical server FQDN.")
+    parser.add_argument("--database", required=True)
     args = parser.parse_args()
-
-    if args.server != APPROVED_SERVER or args.database != APPROVED_DATABASE:
-        parser.error("This runner may target only antho-caldova/research.")
 
     script = args.template.read_text(encoding="utf-8")
     approved, replacements = GATE_PATTERN.subn(r"\g<1>1\g<2>", script)

@@ -8,10 +8,10 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { performance } from 'node:perf_hooks'
 
-type Environment = 'small' | 'million' | 'billion' | 'replica'
+type Environment = 'small' | 'million' | 'replica'
 type SearchMode = 'vector' | 'keyword' | 'hybrid'
 type SearchProfile = 'hybrid' | 'vector'
-type LargeScaleMode = '1M' | '1B'
+type DemoScale = '10K' | '100K' | '1M'
 
 type CorpusStatusRow = { ChunkCount: number; DocumentCount: number }
 type IndexStatusRow = { IndexName: string; IndexVersion: string }
@@ -19,6 +19,7 @@ type IndexStatusRow = { IndexName: string; IndexVersion: string }
 type EnvironmentReadiness = {
   environment: Environment
   databaseLabel: string
+  tableName: string
   configured: boolean
   reachable: boolean
   indexReady: boolean
@@ -46,9 +47,8 @@ type DatabaseTarget = {
   server: string
   database: string
   poolKey: string
-  tableName: 'dbo.pmc_chunks' | 'dbo.pmc_chunks_1M'
+  tableName: 'dbo.pmc_chunks' | 'dbo.pmc_chunks_demo' | 'dbo.pmc_chunks_1M'
   searchProfile: SearchProfile
-  reportedChunkCount: number | null
 }
 
 class ApiError extends Error {
@@ -57,18 +57,16 @@ class ApiError extends Error {
   }
 }
 
+const DEMO_SCALE = getDemoScale(process.env.CALDOVA_DEMO_SCALE)
+const demoTableName: DatabaseTarget['tableName'] = DEMO_SCALE === '1M'
+  ? 'dbo.pmc_chunks_1M'
+  : 'dbo.pmc_chunks_demo'
+
 const DATABASE_LABELS: Record<Environment, string> = {
   small: '4K pilot',
-  million: '1M primary',
-  billion: '1B primary',
+  million: `${DEMO_SCALE} primary`,
   replica: 'Named replica',
 }
-
-const LARGE_SCALE_MODE: LargeScaleMode = process.env.CALDOVA_LARGE_SCALE_MODE === '1B' ? '1B' : '1M'
-const PRESENTED_BILLION_CHUNK_COUNT = 1_000_000_014
-const largeTableName: DatabaseTarget['tableName'] = LARGE_SCALE_MODE === '1B'
-  ? 'dbo.pmc_chunks'
-  : 'dbo.pmc_chunks_1M'
 
 const ENVIRONMENT_TARGETS: Record<Environment, {
   prefix: string
@@ -76,9 +74,8 @@ const ENVIRONMENT_TARGETS: Record<Environment, {
   searchProfile: SearchProfile
 }> = {
   small: { prefix: 'AZURE_SQL_SMALL', tableName: 'dbo.pmc_chunks', searchProfile: 'hybrid' },
-  million: { prefix: 'AZURE_SQL_LARGE', tableName: 'dbo.pmc_chunks_1M', searchProfile: 'vector' },
-  billion: { prefix: 'AZURE_SQL_LARGE', tableName: largeTableName, searchProfile: 'vector' },
-  replica: { prefix: 'AZURE_SQL_REPLICA', tableName: largeTableName, searchProfile: 'vector' },
+  million: { prefix: 'AZURE_SQL_LARGE', tableName: demoTableName, searchProfile: 'vector' },
+  replica: { prefix: 'AZURE_SQL_REPLICA', tableName: demoTableName, searchProfile: 'vector' },
 }
 
 const pools = new Map<string, PoolEntry>()
@@ -88,6 +85,12 @@ const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const distRoot = path.join(appRoot, 'dist')
 const distIndex = path.join(distRoot, 'index.html')
 const embeddingServiceUrl = (process.env.EMBEDDING_SERVICE_URL ?? 'http://127.0.0.1:8081').replace(/\/$/, '')
+
+function getDemoScale(value: string | undefined): DemoScale {
+  if (!value || value === '1M') return '1M'
+  if (value === '10K' || value === '100K') return value
+  throw new Error('CALDOVA_DEMO_SCALE must be 10K, 100K, or 1M.')
+}
 
 // The statement lives in server/search.sql so the app and the SQL tooling stay in step.
 const SEARCH_SQL = await readFile(path.join(path.dirname(fileURLToPath(import.meta.url)), 'search.sql'), 'utf8')
@@ -154,8 +157,8 @@ app.use((request, response, next) => {
 })
 
 function getEnvironment(value: unknown): Environment {
-  if (value !== 'small' && value !== 'million' && value !== 'billion' && value !== 'replica') {
-    throw new ApiError(400, 'INVALID_ENVIRONMENT', 'Environment must be small, million, billion, or replica.')
+  if (value !== 'small' && value !== 'million' && value !== 'replica') {
+    throw new ApiError(400, 'INVALID_ENVIRONMENT', 'Environment must be small, million, or replica.')
   }
   return value
 }
@@ -185,9 +188,6 @@ function getDatabaseTarget(environment: Environment): DatabaseTarget {
     poolKey: `${server}/${database}`,
     tableName: definition.tableName,
     searchProfile: definition.searchProfile,
-    reportedChunkCount: LARGE_SCALE_MODE === '1M' && (environment === 'billion' || environment === 'replica')
-      ? PRESENTED_BILLION_CHUNK_COUNT
-      : null,
   }
 }
 
@@ -241,6 +241,7 @@ async function inspectEnvironment(environment: Environment): Promise<Environment
   const base: EnvironmentReadiness = {
     environment,
     databaseLabel: DATABASE_LABELS[environment],
+    tableName: ENVIRONMENT_TARGETS[environment].tableName,
     configured: false,
     reachable: false,
     indexReady: false,
@@ -279,7 +280,7 @@ async function inspectEnvironment(environment: Environment): Promise<Environment
 
     // COUNT_BIG arrives as a string, so compare numerically.
     const actualChunkCount = Number(corpus.recordset[0]?.ChunkCount ?? 0)
-    const chunkCount = target.reportedChunkCount ?? actualChunkCount
+    const chunkCount = actualChunkCount
     const documentCountValue = corpus.recordset[0]?.DocumentCount
     const documentCount = documentCountValue == null ? null : Number(documentCountValue)
 
@@ -377,6 +378,7 @@ app.post('/api/search', async (request, response) => {
     response.json({
       environment,
       databaseLabel: readiness.databaseLabel,
+      tableName: target.tableName,
       mode,
       peerReviewedOnly,
       chunkCount: readiness.chunkCount,

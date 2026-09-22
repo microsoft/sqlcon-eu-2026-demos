@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Load the curated PMC corpus into antho-caldova/research.
+"""Load the curated PMC corpus into the target database.
 
 Embeddings are inserted exactly as exported from the source database, so the small
 and large corpora stay in the same vector space.
@@ -16,8 +16,6 @@ from deploy_common_schema import connect, database_token
 
 ROOT = Path(__file__).parents[1]
 DEFAULT_PACKAGE = ROOT / "staging" / "pmc-curated-v1"
-APPROVED_SERVER = "antho-caldova.database.windows.net"
-APPROVED_DATABASE = "research"
 
 INSERT_DOCUMENTS = """
 INSERT dbo.pmc_documents (document_id, pmcid, package_version, title)
@@ -45,14 +43,11 @@ def sha256_file(path: Path) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--package", type=Path, default=DEFAULT_PACKAGE)
-    parser.add_argument("--server", default=APPROVED_SERVER)
-    parser.add_argument("--database", default=APPROVED_DATABASE)
+    parser.add_argument("--server", required=True, help="Logical server FQDN.")
+    parser.add_argument("--database", required=True)
     parser.add_argument("--batch", type=int, default=100)
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args()
-
-    if args.server != APPROVED_SERVER or args.database != APPROVED_DATABASE:
-        parser.error("This loader may target only antho-caldova/research.")
 
     manifest = json.loads((args.package / "manifest.json").read_text(encoding="utf-8"))
     for section, filename in (("documents", "Documents.jsonl"), ("chunks", "Chunks.jsonl")):

@@ -15,6 +15,7 @@ __pycache__/
 .env.*.local
 
 # Recording working files (regenerate with the scripts in recording/)
+*.mp4
 demo2-mission-critical/recording/frames/
 demo2-mission-critical/recording/audio/
 demo2-mission-critical/recording/build/

@@ -9,7 +9,14 @@ Each demo closes a chapter, and demo 3 ties the first two together.
 | 2 | Mission-Critical, at Any Scale | Start small. Scale without re-architecting. | [demo2-mission-critical](demo2-mission-critical) |
 | 3 | Your Data Estate Running Itself | From estate-wide signal to application fix | [demo3-estate-running-itself](demo3-estate-running-itself) |
 
-The [SSMS what's new demo](ssms-whatsnew) shows the recorded two-minute workflow from poorly formatted coworker SQL to a performance recommendation in GitHub Copilot Agent Mode.
+Two independent corenote segments also live here. They are separate from the numbered
+keynote demos and from each other:
+
+| Segment | Format | Repository status | Start here |
+|---|---|---|---|
+| SSMS what's new: From Problem to Answer | Recorded; reproducible | Setup, storyboard, SQL assets, validation, teardown, and fallback guidance are present | [Demo package](corenote/ssms-whatsnew/README.md) |
+| SSMS what's new: Five Customer Asks We Delivered | Alternate recorded concept | Storyboard and SQL assets are present; feature labels, exact interactions, and final recording still need validation | [Alternate storyboard](corenote/ssms-whatsnew/demo/version-2-five-customer-asks.md) |
+| SSMS migration and agentic modernization | Existing 2:09 recording | Talk track and transcript are present. The source application, database, SSMS assessment setup, migration prompt, and replay instructions are not in this repository | [Recording handoff](corenote/migration/README.md) |
 
 ## Why one repository
 
@@ -35,14 +42,19 @@ demo3-estate-running-itself/
   app/                      Operations view sharing the demo 2 design system
   database/                 Invoice schema, seed, and the anti-pattern queries
   docs/                     What to show, and what the fix actually changes
-ssms-whatsnew/
-  setup/                    Public environment setup and rehearsal guidance
-  demo/                     Recorded storyboard and alternate demo concept
-  assets/                   Setup, query, validation, and teardown SQL
 shared/
   design-system/            Tokens and layout primitives used by both apps
   SKILL.md                  Agent skill for building a matching demo app
+corenote/ssms-whatsnew/
+  setup/                    Public environment setup and rehearsal guidance
+  demo/                     Recorded storyboard and alternate demo concept
+  assets/                   Setup, query, validation, and teardown SQL
+corenote/migration/          Talk track and source transcript for the migration recording
 ```
+
+Folders are organized by demo ownership. Add a new keynote demo in its own top-level
+folder; keep assets, setup, and presenter notes inside that folder. Shared code belongs in
+`shared/` only when at least two demos use it. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Ground rules carried over from demo 2
 
@@ -53,11 +65,30 @@ These are not stylistic preferences. They are what keeps the demo honest on stag
   shows blank timings rather than a number it cannot back up.
 - `FORCE_ANN_ONLY` stays in the vector query so a silent fallback to a full scan is
   impossible.
-- The large benchmark database is read-only for this work. No index is created on it
-  until its embeddings finish loading.
-- `research-replica` is a serverless named replica of that database. It shares the
-  primary's storage, so it inherits the vector index the moment the team builds it.
+- A named replica shares the primary's storage, so it inherits the primary's vector index
+  without a second index build and without copying data.
 
 ## Getting started
 
 Each demo folder has its own README with prerequisites and run steps. Start there.
+
+## Public release status
+
+The repository is usable for internal rehearsal but is not ready to publish unchanged:
+
+- Demo 1 is not present.
+- Demo 3 is explicitly a starting point.
+- The SSMS what's new Version 1 workflow must be validated in the final SSMS build and
+  event database; fallback screenshots and recording links are still external.
+- The SSMS migration segment can replay its existing recording, but it cannot be recreated
+  from this repository until the application, database, assessment setup, migration prompt,
+  and operator instructions are supplied or explicitly declared private production assets.
+- Demo 2 targets 1M rows. It was built against a 1B-row index, but 1M is what ships here
+  so the demo stays repeatable.
+- Demo recordings must remain outside Git. Publish them through an approved media location
+  and link to them if needed.
+- The repository owner must add the approved license and code of conduct before public
+  release.
+
+Before publishing, run the app builds, validate every stage claim against a retained
+report, scan for credentials and local paths, and verify all Markdown links.

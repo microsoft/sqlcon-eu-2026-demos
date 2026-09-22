@@ -46,8 +46,7 @@ absolute API, and the API only accepts cross-origin calls from origins named in
 
    ```bash
    cd demo2-mission-critical/app
-   VITE_API_BASE_URL=https://caldova-app.whitemeadow-b4119f0c.westcentralus.azurecontainerapps.io \
-     npm run build
+   VITE_API_BASE_URL=https://<api-host> npm run build
    ```
 
 3. Copy `dist/` next to `rayfin/rayfin.yml`, then:
@@ -60,7 +59,7 @@ absolute API, and the API only accepts cross-origin calls from origins named in
 4. Take the hosting URL it prints and allow it on the API:
 
    ```bash
-   az containerapp update -g antho-rg -n caldova-app \
+   az containerapp update -g <resource-group> -n <container-app-name> \
      --set-env-vars CALDOVA_ALLOWED_ORIGINS=https://<hosting-url>
    ```
 
@@ -74,10 +73,11 @@ resolved the deploy has to happen from another machine or a different Node versi
 
 ## Workspace
 
+Create a Fabric workspace on a capacity you own and deploy into it. The values below are
+the ones the `rayfin.yml` in this folder expects you to supply.
+
 | | |
 |---|---|
-| Workspace | `Caldova` |
-| Workspace id | `1625b0fc-1540-4dfd-ac74-b6f1d4a017db` |
-| Capacity | `annahoffmancapacity` (F32) |
-| Capacity id | `976de143-55be-47fc-aecf-e8da7cd03ae9` |
-| Region | West Central US |
+| Workspace | `<workspace-name>` |
+| Capacity | `<capacity-name>` |
+| Region | The region of your capacity |
