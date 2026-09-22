@@ -11,6 +11,13 @@ Each demo closes a chapter, and demo 3 ties the first two together.
 
 The [SSMS what's new demo](ssms-whatsnew) shows the recorded two-minute workflow from poorly formatted coworker SQL to a performance recommendation in GitHub Copilot Agent Mode.
 
+The [Caldova Hands-Free Indexing demo](corenote/handsfreeindexing) follows one
+unchanged dashboard query through the Azure SQL index lifecycle. Automatic tuning
+creates a covering index from workload evidence, controlled insert/delete activity
+makes it sparse, and Automatic Index Compaction repacks eligible leaf pages. The
+demo pairs live query duration and logical reads with persisted physical index
+telemetry; it does not use synthetic delays, query hints, or a manual index fallback.
+
 ## Why one repository
 
 Demos 2 and 3 share an application. In demo 2 it is an evidence search app on Azure SQL
@@ -24,6 +31,11 @@ needs to look like the keynote app should import those tokens rather than restyl
 ## Layout
 
 ```
+corenote/
+  handsfreeindexing/          Azure SQL automatic indexing and index compaction
+    app/                      Live operations dashboard backed by Azure SQL
+    deploy/                   Infrastructure, workload, lifecycle, and cleanup scripts
+    DEMO-RUNBOOK.md           Lifecycle gates and presentation guidance
 demo1-azure-local/            SQL Server 2025 with Foundry Local on Azure Local
   app/                        ASP.NET Core transfer-center application
   database/                   Ordered deployment and validation scripts
