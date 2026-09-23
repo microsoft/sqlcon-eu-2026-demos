@@ -1,7 +1,8 @@
 # SQLCon EU 2026 corenote demos
 
-This folder contains three end-to-end demos for the SQLCon EU 2026 corenote.
-Each demo has its own prerequisites, deployment guidance, and cleanup steps.
+This folder contains demos and segment materials for the SQLCon EU 2026
+corenote. Each demo has its own prerequisites, deployment guidance, and cleanup
+steps.
 
 ## Caldova Evidence Agent
 
@@ -35,6 +36,16 @@ The guided workshop covers assessment, focused remediation, infrastructure
 deployment, offline BACPAC migration, Microsoft Entra-only authentication,
 managed identity, workflow validation, and cleanup.
 
+## SSMS What's New
+
+[SSMS What's New](ssms-whatsnew) includes setup and rehearsal guidance,
+recorded and alternate storyboards, presenter notes, and versioned SQL assets.
+
+## One Connection String to Rule Them All
+
+[One Connection String to Rule Them All](drivers) contains materials for the
+corenote drivers segment.
+
 ## Run Hands-Free Indexing with GitHub Copilot
 
 Open the repository in VS Code with GitHub Copilot Chat in **Agent** mode, type
@@ -54,10 +65,3 @@ billable, data-changing, or destructive actions.
 
 Choose a demo above and follow its README. These demos can create billable Azure
 resources, so review the prerequisites and cleanup guidance before deployment.
-## Corenote segment index
-
-| Segment | Materials |
-| --- | --- |
-| SSMS What's New | [Setup, storyboards, SQL assets, and presenter guidance](ssms-whatsnew/README.md) |
-| One Connection String to Rule Them All | [Drivers segment](drivers/README.md) |
-| SSMS migration and agentic modernization | [Nandiyo Logistics migration lab](migration/README.md) |
