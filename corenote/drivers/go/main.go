@@ -7,7 +7,7 @@ import (
 	"os"
 	"runtime/debug"
 
-	"github.com/microsoft/go-mssqldb/azuread"
+	_ "github.com/microsoft/go-mssqldb"
 )
 
 const driverModule = "github.com/microsoft/go-mssqldb"
@@ -30,11 +30,14 @@ func driverVersion() string {
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		panic("pass the connection string as the first argument")
+	connectionString := os.Getenv("SQL_CONNECTION_STRING")
+	if len(os.Args) > 1 {
+		connectionString = os.Args[1]
 	}
-
-	database, err := sql.Open(azuread.DriverName, os.Args[1])
+	if connectionString == "" {
+		panic("pass the connection string as the first argument or set SQL_CONNECTION_STRING")
+	}
+	database, err := sql.Open("sqlserver", connectionString)
 	check(err)
 	defer database.Close()
 

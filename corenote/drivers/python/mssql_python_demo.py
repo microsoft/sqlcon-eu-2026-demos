@@ -5,10 +5,17 @@ from importlib.metadata import version
 
 import mssql_python
 
-if len(sys.argv) < 2:
-    raise SystemExit("Pass the connection string as the first argument.")
+import os
 
-connection = mssql_python.connect(sys.argv[1])
+connection_string = (
+    sys.argv[1] if len(sys.argv) > 1 else os.environ.get("SQL_CONNECTION_STRING")
+)
+if not connection_string:
+    raise SystemExit(
+        "Pass the connection string as the first argument or set SQL_CONNECTION_STRING."
+    )
+
+connection = mssql_python.connect(connection_string)
 try:
     cursor = connection.cursor()
     cursor.execute(

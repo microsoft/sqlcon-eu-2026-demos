@@ -5,7 +5,9 @@ const string query = "SELECT TOP (5) ProductID, Name FROM SalesLT.Product ORDER 
 
 var connectionString = args.Length > 0
     ? args[0]
-    : throw new InvalidOperationException("Pass the connection string as the first argument.");
+    : Environment.GetEnvironmentVariable("SQL_CONNECTION_STRING")
+        ?? throw new InvalidOperationException(
+            "Pass the connection string as the first argument or set SQL_CONNECTION_STRING.");
 
 await using var connection = new SqlConnection(connectionString);
 await connection.OpenAsync();
