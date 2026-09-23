@@ -54,3 +54,10 @@ billable, data-changing, or destructive actions.
 
 Choose a demo above and follow its README. These demos can create billable Azure
 resources, so review the prerequisites and cleanup guidance before deployment.
+## Corenote segment index
+
+| Segment | Materials |
+| --- | --- |
+| SSMS What's New | [Setup, storyboards, SQL assets, and presenter guidance](ssms-whatsnew/README.md) |
+| One Connection String to Rule Them All | [Drivers segment](drivers/README.md) |
+| SSMS migration and agentic modernization | [Nandiyo Logistics migration lab](migration/README.md) |
