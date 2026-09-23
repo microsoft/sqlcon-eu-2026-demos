@@ -3,7 +3,6 @@ $root = $PSScriptRoot
 $artifacts = Join-Path $root 'artifacts'
 $runtime = 'win-arm64'
 $env:PIP_CONFIG_FILE = Join-Path $root 'pip.ini'
-$env:NPM_CONFIG_USERCONFIG = Join-Path $root '.npmrc'
 
 if (Test-Path $artifacts) {
     Remove-Item $artifacts -Recurse -Force
