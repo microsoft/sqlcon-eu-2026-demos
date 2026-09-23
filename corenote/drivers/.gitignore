@@ -1,0 +1,10 @@
+.venv/
+artifacts/
+**/bin/
+**/obj/
+**/target/
+*.exe
+*.dll
+*.pdb
+*.pyc
+__pycache__/
