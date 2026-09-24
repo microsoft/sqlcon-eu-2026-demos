@@ -26,6 +26,8 @@ The [corenote collection](corenote) includes:
   and ASP.NET Core migration to Azure SQL Database and Azure App Service.
 - [SSMS what's new](corenote/ssms-whatsnew): reproducible feature demonstrations,
   storyboards, SQL assets, and presenter guidance.
+- [One Connection String to Rule Them All](corenote/drivers): materials for the
+  corenote drivers segment.
 
 ## Repository structure
 
@@ -68,4 +70,4 @@ Open the README in the demo folder you want to run. Each demo documents its own
 prerequisites, deployment steps, validation, and cleanup.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) before changing shared assets or adding a
-new demo.
+new demo. Report suspected vulnerabilities according to [SECURITY.md](SECURITY.md).

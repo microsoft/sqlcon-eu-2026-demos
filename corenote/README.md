@@ -1,7 +1,8 @@
 # SQLCon EU 2026 corenote demos
 
-This folder contains three end-to-end demos for the SQLCon EU 2026 corenote.
-Each demo has its own prerequisites, deployment guidance, and cleanup steps.
+This folder contains demos and segment materials for the SQLCon EU 2026
+corenote. Each demo has its own prerequisites, deployment guidance, and cleanup
+steps.
 
 ## Caldova Evidence Agent
 
@@ -34,6 +35,16 @@ and Azure SQL Database Hyperscale.
 The guided workshop covers assessment, focused remediation, infrastructure
 deployment, offline BACPAC migration, Microsoft Entra-only authentication,
 managed identity, workflow validation, and cleanup.
+
+## SSMS What's New
+
+[SSMS What's New](ssms-whatsnew) includes setup and rehearsal guidance,
+recorded and alternate storyboards, presenter notes, and versioned SQL assets.
+
+## One Connection String to Rule Them All
+
+[One Connection String to Rule Them All](drivers) contains materials for the
+corenote drivers segment.
 
 ## Run with GitHub Copilot
 

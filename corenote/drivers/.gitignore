@@ -1,0 +1,14 @@
+.venv/
+artifacts/
+.DS_Store
+.env
+.env.*
+**/bin/
+**/obj/
+**/target/
+*.log
+*.exe
+*.dll
+*.pdb
+*.pyc
+__pycache__/
