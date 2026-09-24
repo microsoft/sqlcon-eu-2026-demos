@@ -135,10 +135,10 @@ $env:CALDOVA_AGENT_VERSION = '<active-version>'
 
 This script:
 
-- Discovers the active hosted-agent version from Foundry
+- Resolves the hosted-agent endpoint and version from explicit environment variables, local `azd` state, or deployed App Service settings
 - Builds the application
 - Starts Express on `http://127.0.0.1:8000`
-- Opens the app in a standalone Microsoft Edge window
+- Opens the app in a standalone Microsoft Edge window and verifies that the visible `Caldova` window exists
 - Writes local output under `.run/`
 
 Stop it with:

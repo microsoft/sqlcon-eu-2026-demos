@@ -11,7 +11,7 @@ Guide the presenter from `DEMO-RUNBOOK.md`. Do not provision, redeploy, or modif
 
 1. Read `DEMO-RUNBOOK.md` completely.
 2. Run `deploy/11-verify-system.ps1` synchronously.
-3. Open or reuse the app in a standalone Edge window.
+3. Follow the `run-caldova-evidence-agent` skill to open or reuse the app and verify its standalone Edge window.
 4. Ask the presenter to open the hosted agent Log stream in Microsoft Foundry if it is not already visible.
 5. Report readiness and wait for the presenter to say `start`.
 

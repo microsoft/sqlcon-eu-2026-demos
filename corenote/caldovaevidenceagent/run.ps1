@@ -18,14 +18,43 @@ if (-not $agentEndpoint -or -not $agentVersion) {
     try {
         $env:AZURE_DEV_USER_AGENT = 'caldova_evidence_agent_publish'
         $agentOutput = & azd ai agent show $HostedAgentName --environment $AzdEnvironmentName --output json 2>&1
-        if ($LASTEXITCODE -ne 0) {
-            throw "Could not resolve hosted agent from azd environment '$AzdEnvironmentName'. Run deploy\Build-All.ps1 first or set CALDOVA_AGENT_ENDPOINT and CALDOVA_AGENT_VERSION. $($agentOutput | Out-String)"
+        if ($LASTEXITCODE -eq 0) {
+            $agent = ($agentOutput | Out-String) | ConvertFrom-Json
+            if ($agent.status -eq 'active') {
+                $agentVersion = [string]$agent.version
+                $agentEndpoint = "$FoundryProjectEndpoint/agents/$HostedAgentName/endpoint/protocols/openai/responses?api-version=v1"
+            }
         }
-        $agent = ($agentOutput | Out-String) | ConvertFrom-Json
-        if ($agent.status -ne 'active') { throw "Hosted agent status is $($agent.status). Run deploy\Build-All.ps1 first." }
-        $agentVersion = [string]$agent.version
-        $agentEndpoint = "$FoundryProjectEndpoint/agents/$HostedAgentName/endpoint/protocols/openai/responses?api-version=v1"
     } finally { Pop-Location }
+}
+
+if (-not $agentEndpoint -or -not $agentVersion) {
+    $configuredName = $AppServiceName
+    $deployedNames = & az webapp list --subscription $ExpectedSubscriptionId `
+        --resource-group $ResourceGroup --query '[].name' --output tsv 2>$null
+    $candidateNames = @($configuredName) + @($deployedNames -split "`r?`n") |
+        Where-Object { $_ } | Select-Object -Unique
+
+    foreach ($appName in $candidateNames) {
+        $settingsOutput = & az webapp config appsettings list --subscription $ExpectedSubscriptionId `
+            --resource-group $ResourceGroup --name $appName `
+            --query "[?name=='CALDOVA_AGENT_ENDPOINT' || name=='CALDOVA_AGENT_VERSION'].{name:name,value:value}" `
+            --output json 2>$null
+        if ($LASTEXITCODE -ne 0 -or -not $settingsOutput) { continue }
+
+        $settings = ($settingsOutput | Out-String) | ConvertFrom-Json
+        $deployedEndpoint = ($settings | Where-Object name -eq 'CALDOVA_AGENT_ENDPOINT').value
+        $deployedVersion = ($settings | Where-Object name -eq 'CALDOVA_AGENT_VERSION').value
+        if ($deployedEndpoint -and $deployedVersion) {
+            $agentEndpoint = [string]$deployedEndpoint
+            $agentVersion = [string]$deployedVersion
+            break
+        }
+    }
+}
+
+if (-not $agentEndpoint -or -not $agentVersion) {
+    throw "Could not resolve the hosted agent from explicit environment variables, azd environment '$AzdEnvironmentName', or App Service settings in resource group '$ResourceGroup'. Deploy first or set CALDOVA_AGENT_ENDPOINT and CALDOVA_AGENT_VERSION."
 }
 
 $env:CALDOVA_AGENT_ENDPOINT = $agentEndpoint
@@ -73,4 +102,13 @@ $edgeCandidates = @(
 $edge = $edgeCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $edge) { throw 'Microsoft Edge was not found.' }
 Start-Process -FilePath $edge -ArgumentList '--app=http://127.0.0.1:8000/'
+$edgeReady = $false
+foreach ($attempt in 1..20) {
+    $edgeReady = [bool](Get-Process msedge -ErrorAction SilentlyContinue |
+        Where-Object { $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle -like '*Caldova*' } |
+        Select-Object -First 1)
+    if ($edgeReady) { break }
+    Start-Sleep -Milliseconds 250
+}
+if (-not $edgeReady) { throw 'Microsoft Edge started, but the standalone Caldova window was not detected.' }
 Write-Host "Caldova Evidence Agent is running at http://127.0.0.1:8000/ (hosted agent v$agentVersion)." -ForegroundColor Green
