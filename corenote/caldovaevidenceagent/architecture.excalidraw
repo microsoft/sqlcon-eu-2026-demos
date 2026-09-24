@@ -24,7 +24,7 @@
       "y": 82,
       "width": 980,
       "height": 35,
-      "text": "A hosted Foundry Agent loads a versioned skill, then directly calls governed Azure SQL MCP tools",
+      "text": "A hosted Foundry Agent loads a versioned skill, then investigates through governed Azure SQL tools",
       "fontSize": 16,
       "fontFamily": 2,
       "textAlign": "left",
@@ -32,7 +32,7 @@
       "strokeColor": "#000000"
     },
     {
-      "id": "arrow-app-agent",
+      "id": "arrow-teams-agent",
       "type": "arrow",
       "x": 310,
       "y": 335,
@@ -41,7 +41,7 @@
       "points": [[0, 0], [120, 0]],
       "strokeColor": "#0078D4",
       "strokeWidth": 3,
-      "startBinding": {"elementId": "app-box", "focus": 0, "gap": 4},
+      "startBinding": {"elementId": "teams-box", "focus": 0, "gap": 4},
       "endBinding": {"elementId": "agent-box", "focus": 0, "gap": 4}
     },
     {
@@ -110,7 +110,7 @@
       "endBinding": {"elementId": "model-box", "focus": 0, "gap": 4}
     },
     {
-      "id": "app-box",
+      "id": "teams-box",
       "type": "rectangle",
       "x": 70,
       "y": 270,
@@ -121,22 +121,22 @@
       "fillStyle": "solid",
       "strokeWidth": 2,
       "roundness": {"type": 3},
-      "boundElements": [{"type": "text", "id": "app-text"}]
+      "boundElements": [{"type": "text", "id": "teams-text"}]
     },
     {
-      "id": "app-text",
+      "id": "teams-text",
       "type": "text",
       "x": 90,
       "y": 294,
       "width": 200,
       "height": 82,
-      "text": "Caldova Evidence App\nReact + Express\nAzure App Service",
-      "fontSize": 19,
+      "text": "Caldova Evidence App\n\nUses an agent for\nevidence investigation",
+      "fontSize": 18,
       "fontFamily": 2,
       "textAlign": "center",
       "verticalAlign": "middle",
       "strokeColor": "#000000",
-      "containerId": "app-box"
+      "containerId": "teams-box"
     },
     {
       "id": "agent-box",
@@ -159,7 +159,7 @@
       "y": 285,
       "width": 240,
       "height": 100,
-      "text": "Hosted Foundry Agent\nResponses protocol\n\nPlans, investigates, synthesizes",
+      "text": "Hosted Foundry Agent\nResponses + Activity\n\nPlans, investigates, synthesizes",
       "fontSize": 18,
       "fontFamily": 2,
       "textAlign": "center",
@@ -188,7 +188,7 @@
       "y": 132,
       "width": 240,
       "height": 86,
-      "text": "Foundry Skills API\nbiomedical-evidence-review-v2\nVersioned SKILL.md",
+      "text": "Foundry Skills API\nbiomedical-evidence-review\nVersioned SKILL.md",
       "fontSize": 16,
       "fontFamily": 2,
       "textAlign": "center",
@@ -259,7 +259,7 @@
       "y": 285,
       "width": 240,
       "height": 100,
-      "text": "DAB 2.0.9\nSQL MCP Server\n\nGoverned read-only tools",
+      "text": "DAB 2.0\nSQL MCP Server\n\nGoverned read-only tools",
       "fontSize": 18,
       "fontFamily": 2,
       "textAlign": "center",
@@ -346,7 +346,7 @@
       "y": 520,
       "width": 300,
       "height": 80,
-      "text": "Azure SQL Database: research\nHyperscale\nVECTOR_SEARCH + DiskANN",
+      "text": "Azure SQL Database: research\nVECTOR_SEARCH + DiskANN",
       "fontSize": 17,
       "fontFamily": 2,
       "textAlign": "center",
@@ -371,11 +371,11 @@
     {
       "id": "label-tool-call",
       "type": "text",
-      "x": 714,
+      "x": 728,
       "y": 295,
-      "width": 110,
+      "width": 82,
       "height": 30,
-      "text": "direct MCP calls",
+      "text": "tool call",
       "fontSize": 13,
       "fontFamily": 2,
       "textAlign": "center",
@@ -431,7 +431,7 @@
       "y": 660,
       "width": 1440,
       "height": 42,
-      "text": "Hosted Agent + versioned Skill  |  Direct governed SQL MCP calls  |  Evidence returned with PMCID attribution",
+      "text": "Hosted Agent + versioned Skill  |  Governed SQL MCP tools  |  Evidence returned with PMCID attribution",
       "fontSize": 16,
       "fontFamily": 2,
       "textAlign": "center",
