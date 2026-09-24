@@ -49,6 +49,15 @@ and type `/` to run one of the workspace prompts:
 | `/prepare-handsfree-indexing` | Prepare, deploy, and verify the Hands-Free Indexing environment |
 | `/rehearse-handsfree-indexing` | Walk through automatic indexing and compaction one measured phase at a time |
 
+The Caldova Evidence Agent also includes natural-language skills that Copilot
+selects from your request:
+
+| Ask Copilot to | Skill |
+|---|---|
+| Build, deploy, repair, or verify the Caldova Evidence Agent | [Build Caldova Evidence Agent](.github/skills/build-caldova-evidence-agent/SKILL.md) |
+| Start, open, check, or stop the Caldova Evidence Agent application | [Run Caldova Evidence Agent](.github/skills/run-caldova-evidence-agent/SKILL.md) |
+| Rehearse or guide the Caldova Evidence Agent demo one beat at a time | [Demo Caldova Evidence Agent](.github/skills/demo-caldova-evidence-agent/SKILL.md) |
+
 The prompts use repository skills in [.github/skills](.github/skills). They read
 the current runbooks, use the checked-in scripts, protect credentials, and stop
 for confirmation before elevated, billable, data-changing, or destructive work.

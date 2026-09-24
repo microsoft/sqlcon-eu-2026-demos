@@ -1,199 +1,237 @@
 # Caldova Evidence Agent
 
-## Proposal
+A portable companion repository for building and presenting a biomedical evidence agent on Azure.
 
-Turn the Caldova biomedical search experience from Demo 2 into a conversational evidence agent. The new demo keeps retrieval deterministic in Azure SQL, exposes that retrieval through Data API builder's SQL MCP Server, lets a Microsoft Foundry agent plan and synthesize an investigation, and publishes the agent to Microsoft Teams.
+The system combines:
 
-## Keynote story
+- Azure SQL Database Hyperscale with native embeddings and DiskANN vector search
+- Data API builder SQL MCP Server with exactly three governed stored-procedure tools
+- A Microsoft Foundry hosted .NET agent using GPT-5
+- A formal, versioned Foundry Agent Skill
+- A React and Express application hosted on Azure App Service
 
-> SQL retrieves the evidence. The agent decides what to investigate, connects the evidence, identifies uncertainty, and continues the research conversation in Teams.
-
-The demo is intentionally about the agent experience, not vector scale. It uses a small curated corpus and shows the shortest credible path from a natural-language question to a grounded, multi-source answer.
+The curated public corpus contains 44 PubMed Central articles and 4,076 passages. It contains no patient data and no precomputed vectors; deployment generates fresh 512-dimensional embeddings inside Azure SQL.
 
 ## Architecture
 
-![Caldova Evidence Agent architecture](architecture.svg)
+```text
+Browser
+  -> React/Express App Service
+  -> Microsoft Foundry hosted .NET agent
+       -> versioned biomedical-evidence-review skill
+       -> GPT-5 directly chooses SQL MCP tools
+  -> DAB SQL MCP Server in Azure Container Apps
+  -> approved Azure SQL stored procedures
+  -> Azure SQL Hyperscale + DiskANN + native embeddings
+```
 
-[Open the SVG](architecture.svg) | [Edit the Excalidraw source](architecture.excalidraw)
+See `architecture.svg` for the complete diagram.
 
-The Foundry agent can use additional MCP servers later. For example, Azure MCP Server could report deployment health while SQL MCP Server retrieves biomedical evidence. The MVP needs only the SQL MCP endpoint.
+## What Gets Deployed
 
-## Data plan
+- One resource group
+- Azure SQL logical server and `research` Hyperscale serverless database
+- Microsoft Foundry account, project, embedding deployment, and GPT-5 deployment
+- Azure Container Registry
+- Container Apps environment and DAB SQL MCP Container App
+- Managed identities for DAB and the web app
+- Foundry hosted agent and versioned skill
+- Linux App Service plan, web app, Application Insights, and alert rule
 
-Create a new Azure SQL Database deployment in a new resource group and logical server. Keep the database name `research` and reuse the Demo 2 corpus shape:
+These resources incur Azure charges. Review names, regions, quota, and subscription before approving the build.
 
-- `dbo.pmc_documents`
-- `dbo.pmc_chunks`
-- Article title and PMCID metadata
-- Pre-segmented passage text
-- A vector column and DiskANN vector index
+## Prerequisites
 
-The staged Demo 2 package contains everything needed to rebuild the curated corpus:
+Install and authenticate:
 
-- 44 articles
-- 4,076 passages
-- No missing passage text
-- Passage lengths between 149 and 768 characters
-- Fifteen existing evaluation questions and expected article coverage
+- PowerShell 7
+- Azure CLI with the Container Apps extension
+- Azure Developer CLI (`azd`) with the `microsoft.foundry` extension
+- Python 3.11 or later
+- Microsoft ODBC Driver 18 for SQL Server
+- Node.js 22 and npm
+- .NET 10 SDK
+- Microsoft Edge for the standalone demo window
 
-Do not reuse the existing Potion vectors. Register one embedding model as an Azure SQL `EXTERNAL MODEL`, then regenerate every stored passage embedding with `AI_GENERATE_EMBEDDINGS`. Query embeddings must use the same model and dimensions as stored embeddings.
+```powershell
+az login
+az account set --subscription "<subscription-id-or-name>"
+azd auth login
+azd extension install microsoft.foundry
+```
 
-A practical choice is `text-embedding-3-small` configured for 512 dimensions, allowing the existing `VECTOR(512)` column shape to remain. Model availability, deployment capacity, and the 512-dimension response must be validated before loading the corpus.
+Required Azure permissions include resource creation, role assignments, Azure SQL administration, model deployment, and Foundry agent deployment.
 
-The source passages are already appropriately segmented, so this demo does not require the original PMC XML or `AI_GENERATE_CHUNKS`.
+## Portable Configuration
 
-## SQL retrieval contract
+The scripts use the current Azure CLI subscription and tenant by default. Override settings with process environment variables before running a stage:
 
-Place the search behavior behind stored procedures. DAB 2.0 exposes each procedure as a named MCP custom tool, so the agent never generates SQL or receives direct database access.
+```powershell
+$env:CALDOVA_SUBSCRIPTION_ID = '<subscription-id>'
+$env:CALDOVA_TENANT_ID = '<tenant-id>'
+$env:CALDOVA_NAME_SUFFIX = 'demo123'
+$env:CALDOVA_RESOURCE_GROUP = 'rg-caldova-evidence'
+$env:CALDOVA_SQL_LOCATION = 'westcentralus'
+$env:CALDOVA_FOUNDRY_LOCATION = 'eastus2'
+$env:CALDOVA_APP_LOCATION = 'centralus'
+$env:CALDOVA_AZD_ENVIRONMENT = 'caldova-evidence'
+```
 
-### `search_evidence`
+`CALDOVA_NAME_SUFFIX` must contain 3-10 lowercase letters or numbers. If omitted, the first six alphanumeric characters of the subscription ID are used.
 
-Inputs:
+Region and model quota availability varies. `deploy/01-preflight.ps1` measures the configured subscription before creating resources.
 
-- `question`: natural-language biomedical question
-- `top_k`: requested result count with a conservative maximum
+## Build Everything
 
-Behavior:
+Run from the repository root:
 
-1. Validate the inputs.
-2. Generate a query vector with `AI_GENERATE_EMBEDDINGS`.
-3. Fail clearly if the embedding call returns `NULL`.
-4. Run `VECTOR_SEARCH` with cosine distance.
-5. Collapse results to one passage per article.
-6. Return the passage, neighboring context, title, PMCID, chunk number, and distance.
+```powershell
+.\deploy\Build-All.ps1
+```
 
-### `get_article_context`
+The build is staged and fail-fast:
 
-Returns additional passages around a selected article and chunk when the initial evidence is incomplete.
+1. Validate tools, Azure context, quota, regions, and corpus hashes.
+2. Create Azure SQL, Foundry account, embedding deployment, and required identities.
+3. Load the corpus, generate embeddings, create DiskANN, and deploy retrieval procedures.
+4. Verify SQL counts, embeddings, index version, and retrieval.
+5. Build and deploy DAB SQL MCP Server to Container Apps.
+6. Verify MCP initialization, tool discovery, corpus status, and evidence search.
+7. Create the Foundry project and GPT-5 deployment.
+8. Publish the formal skill and deploy the hosted .NET agent.
+9. Verify the hosted two-turn direct-MCP workflow.
+10. Build and deploy the React/Express application to App Service.
+11. Verify the complete browser-to-SQL path.
 
-### `get_corpus_status`
+Each numbered script under `deploy/` can also be run independently for repair or diagnosis.
 
-Returns the corpus version, article and passage counts, embedding model, vector dimensions, and vector-index readiness.
+## Build Source Only
 
-Only the first stored-procedure result set is returned by DAB, so each procedure must expose one stable result shape. Grant the DAB database identity only `EXECUTE` on these procedures. Do not expose generic create, update, or delete tools, arbitrary SQL, or the embedding column.
+Without creating Azure resources:
 
-## DAB SQL MCP Server
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+npm ci --prefix app
+npm run build --prefix app
+dotnet build .\agent\hosted\caldova-evidence-hosted\src\foundry-toolbox-mcp-skills\foundry-toolbox-mcp-skills.csproj --configuration Release
+```
 
-Use Data API builder 2.0 or later with MCP enabled. Configure the procedures as custom tools with clear descriptions so the model knows when to invoke each one.
+## Run Locally
 
-The SQL MCP endpoint is the governed data boundary:
+After the hosted agent is deployed:
 
-- Streamable HTTP for Foundry connectivity
-- Microsoft Entra authentication
-- Role-based authorization
-- No raw SQL generation
-- No write operations
-- OpenTelemetry traces for MCP calls
+```powershell
+.\run.ps1
+```
 
-SQL MCP Server is a capability of Data API builder; it is not a separate custom service that needs to be written.
+To run against an existing hosted agent without local azd environment state, set:
 
-## Agent behavior
+```powershell
+$env:CALDOVA_AGENT_ENDPOINT = 'https://<account>.services.ai.azure.com/api/projects/<project>/agents/caldova-evidence-hosted/endpoint/protocols/openai/responses?api-version=v1'
+$env:CALDOVA_AGENT_VERSION = '<active-version>'
+.\run.ps1
+```
 
-Use a Microsoft Foundry agent named **Caldova Evidence Agent**. The agent should:
+This script:
 
-1. Interpret the user's research goal.
-2. Break broad requests into focused subquestions.
-3. Search separately for each important concept.
-4. Select evidence from distinct articles.
-5. retrieve more context when a passage is incomplete.
-6. Compare mechanisms, agreement, disagreement, and limitations.
-7. Cite every material claim with a PMCID link.
-8. Distinguish direct evidence from synthesis.
-9. Say when the corpus does not contain enough evidence.
-10. Avoid diagnosis and individual treatment recommendations.
+- Discovers the active hosted-agent version from Foundry
+- Builds the application
+- Starts Express on `http://127.0.0.1:8000`
+- Opens the app in a standalone Microsoft Edge window
+- Writes local output under `.run/`
 
-The model should not expose vectors, SQL, hidden reasoning, credentials, or internal tool parameters.
+Stop it with:
 
-## Evidence review skill
+```powershell
+.\stop.ps1
+```
 
-Foundry Agent Skills are currently a preview feature. A reusable `biomedical-evidence-review` skill can hold the investigation workflow instead of embedding all behavior in one system prompt.
+## Run the Deployed App
 
-The skill should instruct the agent to:
+`deploy/09-deploy-app-service.ps1` prints the deployed URL. By default it is:
 
-- Decompose comparative or broad questions.
-- Use at least three distinct articles when available.
-- Retrieve surrounding context before interpreting an incomplete passage.
-- Identify corroboration and disagreement.
-- Separate findings, synthesis, limitations, and next questions.
-- Cite claims with PMCID links.
-- Refuse to invent evidence when retrieval is insufficient.
+```text
+https://app-caldova-evidence-<suffix>.azurewebsites.net/
+```
 
-For the keynote, keep equivalent instructions in the agent definition as a fallback. The demo must still work if the preview skill or Toolbox path is unavailable.
+Check the deployed system at any time:
 
-## Agentic demonstration
+```powershell
+.\deploy\11-verify-system.ps1
+```
 
-Start with a request that requires planning rather than a single search:
+## Demo
 
-> Prepare a three-source evidence briefing on how intestinal microbiome disruption may influence anxiety and depression. Identify the proposed mechanisms, explain where the studies agree or differ, note important limitations, and recommend the next research question.
+Read `DEMO-RUNBOOK.md` before presenting. The live sequence is:
 
-The expected agent behavior is multiple calls to `search_evidence`, followed by targeted `get_article_context` calls and a cited synthesis.
+1. Open the Agent workspace.
+2. Send the natural microbiome question.
+3. Show three direct `search_evidence` calls in Foundry Log stream.
+4. Read the five completed phases and visual evidence briefing.
+5. Select **Find strongest causal evidence**.
+6. Show the visual Strongest, Comparison, and Limitation response.
+7. Close on the three-tool DAB SQL MCP boundary.
 
-Then ask a conversational follow-up:
+The `.github/skills/` directory provides discoverable build, run, and demo workflows for GitHub Copilot in VS Code.
 
-> Compare those findings with the evidence on chronic psychological stress. Is inflammation a shared mechanism?
+## Security Boundary
 
-This demonstrates decomposition, repeated tool use, evidence comparison, conversational continuity, and grounded synthesis.
+DAB exposes exactly:
 
-## Teams experience
+- `search_evidence`
+- `get_article_context`
+- `get_corpus_status`
 
-After testing the stable Foundry agent version, publish it directly through **Teams and Microsoft 365 Copilot**. Begin with the **Just you** scope for rehearsal, which does not require tenant-wide approval.
+REST, GraphQL, generic DML, writes, and arbitrary SQL are disabled. The DAB managed identity receives only the database permissions required by those procedures.
 
-Foundry handles the Azure Bot Service connection, Activity protocol, Teams manifest, packaging, and routing to the stable agent endpoint. A separate Teams backend is not required for the MVP.
+The provided demo deployment uses an anonymous public MCP endpoint over a public biomedical corpus. Before retaining it or using private data, enable Microsoft Entra authentication on the MCP endpoint and authorize only the hosted-agent identity.
 
-Directly published agents currently do not provide streaming or native citation objects. Render PMCID references as ordinary clickable links. Use Microsoft 365 Agents Toolkit later only if the demo requires Adaptive Cards, a custom source panel, or richer citation rendering.
+## Verification Commands
 
-## Security and identity
+```powershell
+.\deploy\04-verify-sql.ps1
+.\deploy\06-verify-dab-container-app.ps1
+.\deploy\10-verify-hosted-agent.ps1 -EnvironmentName 'caldova-evidence'
+.\deploy\11-verify-system.ps1
+```
 
-Use managed identities throughout:
+Replace `caldova-evidence` if you set `CALDOVA_AZD_ENVIRONMENT` to another name.
 
-1. Teams sends the conversation to the published Foundry agent.
-2. The Foundry agent identity authenticates to the protected DAB MCP endpoint.
-3. The DAB workload identity connects to Azure SQL.
-4. The database identity can execute only the approved read-only procedures.
-5. Azure SQL authenticates to the embedding endpoint through its configured external-model credential.
+Expected initial response contract:
 
-No database password, model API key, or shared application secret should appear in source control.
+- Exactly three direct SQL MCP searches
+- Exactly three distinct PMC sources
+- Visual Bottom line, Evidence signals, Confidence, and Suggested follow-up sections
+- High confidence for mechanistic plausibility with separate human-clinical qualification
 
-## Evaluation
+Expected causal follow-up:
 
-Reuse the fifteen Demo 2 questions as the retrieval regression set. Add agent-level tests for:
+- Visual Strongest, Comparison, and Limitation signals
+- Retained prior sources
+- No unnecessary search when earlier evidence is sufficient
 
-- Correct MCP tool selection
-- Multiple searches for broad or comparative requests
-- At least two or three distinct sources when available
-- Every factual claim traceable to returned evidence
-- No invented articles or PMCIDs
-- Appropriate insufficient-evidence behavior
-- Correct handling of follow-up questions
-- Teams installation and conversation smoke tests
-- Retained latency measurements before any timing is quoted on stage
+## Repository Layout
 
-## Implementation sequence
+```text
+.github/skills/   Copilot build, run, and demo workflows
+agent/            Hosted .NET agent and formal Agent Skill
+app/              React UI, Express API, Dockerfile, and App Service Bicep
+dab/              DAB SQL MCP configuration and verifier
+database/         SQL schema, retrieval procedures, loaders, and verification
+corpus/           Text-only PMC corpus and integrity manifest
+deploy/           Staged Azure deployment and verification scripts
+DEMO-RUNBOOK.md   Presenter flow and recovery steps
+run.ps1           Local app launcher
+stop.ps1          Local app stop command
+```
 
-1. Provision the new Azure SQL logical server and `research` database.
-2. Deploy the corpus schema without loading the old vectors.
-3. Configure the external embedding model and verify a single 512-dimensional result.
-4. Load the 44 articles and 4,076 passage texts.
-5. Generate passage embeddings in controlled batches with retry handling.
-6. Create and verify the DiskANN vector index.
-7. Implement and test the three stored procedures directly in SQL.
-8. Configure DAB 2.0 and verify its MCP `tools/list` and `tools/call` behavior.
-9. Create the Foundry agent and connect the SQL MCP server.
-10. Add the evidence-review instructions or skill.
-11. Run retrieval and agent evaluations.
-12. Publish privately to Teams and rehearse the exact stage conversation.
-13. Capture a fallback recording after the live contract passes.
+## Cleanup
 
-## MVP boundary
+For a short-lived demo, delete the dedicated resource group after recording:
 
-The first version deliberately excludes:
+```powershell
+az group delete --name $env:CALDOVA_RESOURCE_GROUP --yes --no-wait
+```
 
-- The large-corpus scale comparison
-- Hybrid full-text retrieval
-- Database write operations
-- Arbitrary SQL or NL-to-SQL
-- A custom Teams frontend
-- Multi-agent orchestration
-- Automated clinical recommendations
-
-These can be added only after the single-agent, read-only evidence workflow is stable and measurable.
+If `CALDOVA_RESOURCE_GROUP` was not set, the default is `rg-caldova-evidence`. Confirm the target resource group before running this destructive command.

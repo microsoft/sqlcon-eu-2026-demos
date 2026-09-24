@@ -1,0 +1,148 @@
+{
+  "format": "pmc-curated-v1",
+  "source": {
+    "package": "demo2-mission-critical/pmc-curated-v1",
+    "note": "Text and metadata copied from the curated Demo 2 package."
+  },
+  "embedding": {
+    "model": null,
+    "dimensions": 512,
+    "status": "not-generated",
+    "targetModel": "text-embedding-3-small",
+    "note": "Original Potion vectors removed. Deployment regenerates every embedding in Azure SQL."
+  },
+  "documents": {
+    "path": "Documents.jsonl",
+    "rows": 44,
+    "bytes": 7738,
+    "sha256": "04110921dd8a6e231d45fc94eef871bf112c0418174b6610b484f150ede1db09"
+  },
+  "chunks": {
+    "path": "Chunks.jsonl",
+    "rows": 4076,
+    "bytes": 3340024,
+    "sha256": "680e4e738f78ddb69793b7cbcbd799c4cbf5817c1601eed26079c0c83e5857e9"
+  },
+  "coverage": [
+    {
+      "question": "How does chronic sleep disruption contribute to insulin resistance and impaired glucose regulation in adults?",
+      "documents": [
+        9307,
+        15869,
+        30839
+      ]
+    },
+    {
+      "question": "What biological mechanisms connect periodontal inflammation with elevated blood pressure and cardiovascular risk?",
+      "documents": [
+        1020158,
+        1255280,
+        1552055
+      ]
+    },
+    {
+      "question": "Does improving maternal nutrition during pregnancy reduce impaired fetal growth and adverse birth outcomes?",
+      "documents": [
+        1693,
+        2337,
+        5262
+      ]
+    },
+    {
+      "question": "How does prolonged exposure to air pollution affect cognitive decline and dementia risk in older adults?",
+      "documents": [
+        9924,
+        57882,
+        170743
+      ]
+    },
+    {
+      "question": "What factors explain why obesity increases the risk of severe respiratory infection?",
+      "documents": [
+        1599349,
+        1824897,
+        2280717
+      ]
+    },
+    {
+      "question": "How does disruption of the intestinal microbiome influence anxiety and depressive symptoms?",
+      "documents": [
+        77055,
+        77825,
+        130053
+      ]
+    },
+    {
+      "question": "Can physical activity slow functional and cognitive deterioration in people with neurodegenerative disease?",
+      "documents": [
+        43377,
+        95447,
+        162777
+      ]
+    },
+    {
+      "question": "Why are children exposed to repeated intestinal infections more likely to experience poor linear growth?",
+      "documents": [
+        1743,
+        17583,
+        19872
+      ]
+    },
+    {
+      "question": "How does social isolation affect mortality and cardiovascular health among older people?",
+      "documents": [
+        17623,
+        346763,
+        729863
+      ]
+    },
+    {
+      "question": "What mechanisms connect chronic psychological stress with increased susceptibility to infectious disease?",
+      "documents": [
+        298150,
+        343273,
+        370838
+      ]
+    },
+    {
+      "question": "Does treatment of chronic inflammatory disease reduce the subsequent risk of cardiovascular events?",
+      "documents": [
+        43197,
+        55178,
+        59641
+      ]
+    },
+    {
+      "question": "How does antibiotic exposure early in life influence later allergic or metabolic disease?",
+      "documents": [
+        43246,
+        71676,
+        109902
+      ]
+    },
+    {
+      "question": "Why do some cancer patients fail to respond to immune-based treatment despite initially showing tumor regression?",
+      "documents": [
+        8822,
+        9365,
+        14795
+      ]
+    },
+    {
+      "question": "How does limited access to nutritious food contribute to both obesity and micronutrient deficiency?",
+      "documents": [
+        17584,
+        88977,
+        107196
+      ]
+    },
+    {
+      "question": "What maternal, household, and environmental conditions contribute jointly to childhood undernutrition?",
+      "documents": [
+        227466,
+        240849,
+        240850
+      ]
+    }
+  ]
+}

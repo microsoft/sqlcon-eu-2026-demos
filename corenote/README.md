@@ -35,7 +35,21 @@ The guided workshop covers assessment, focused remediation, infrastructure
 deployment, offline BACPAC migration, Microsoft Entra-only authentication,
 managed identity, workflow validation, and cleanup.
 
-## Run Hands-Free Indexing with GitHub Copilot
+## Run with GitHub Copilot
+
+### Caldova Evidence Agent
+
+Open the repository in VS Code with GitHub Copilot Chat in **Agent** mode and
+ask Copilot to:
+
+- Build, deploy, repair, or verify the Caldova Evidence Agent with the
+	[build skill](../.github/skills/build-caldova-evidence-agent/SKILL.md).
+- Start, open, check, or stop the application with the
+	[run skill](../.github/skills/run-caldova-evidence-agent/SKILL.md).
+- Rehearse or guide the demo one beat at a time with the
+	[demo skill](../.github/skills/demo-caldova-evidence-agent/SKILL.md).
+
+### Caldova Hands-Free Indexing
 
 Open the repository in VS Code with GitHub Copilot Chat in **Agent** mode, type
 `/`, and choose:
