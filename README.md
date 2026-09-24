@@ -1,73 +1,119 @@
-# SQLCon EU 2026 demos
+<div align="center">
+  <a href="https://espc.tech/conference/fabcon-europe-2026/">
+    <img src="https://espc.tech/wp-content/uploads/2026/03/events-fabcon-home-hero-2026-05-large-scaled.jpg" width="100%" alt="FabCon Europe keynote speaker in front of the Barcelona skyline">
+  </a>
 
-Demo applications, deployment assets, and presenter guidance for SQLCon EU 2026,
-built around the theme **any database, one data estate**.
+# SQLCon Europe 2026 Demo Lab
+
+**Live demos, deployment assets, and presenter guidance for the European Microsoft Fabric + SQL Community Conference.**
+
+[![Barcelona](https://img.shields.io/badge/Barcelona-CCIB-e27156?style=for-the-badge)](https://espc.tech/venue-faq-fabcon26/)
+[![Dates](https://img.shields.io/badge/Sep_28-Oct_1%2C_2026-1b5343?style=for-the-badge)](https://espc.tech/conference/fabcon-europe-2026/)
+[![Theme](https://img.shields.io/badge/Any_database-One_data_estate-183129?style=for-the-badge)](#the-story)
+
+[Keynote demos](#keynote-demos) · [Corenote demos](#corenote-demos) · [Run with Copilot](#run-with-github-copilot) · [Start here](#start-here)
+
+</div>
+
+> **Any database. One data estate.**
+>
+> Follow the data from sovereign infrastructure, through mission-critical scale,
+> to an estate that can detect and help fix its own problems.
+
+## The story
+
+```mermaid
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#f8f9f6','primaryTextColor':'#183129','primaryBorderColor':'#1b5343','lineColor':'#e27156','secondaryColor':'#dce9e4','tertiaryColor':'#f7ddd6'}}}%%
+flowchart LR
+    A["01  Sovereign<br/>Run data + AI locally"] --> B["02  Scale<br/>Search billions of vectors"]
+    B --> C["03  Self-manage<br/>Find and fix the slowdown"]
+    C --> D["Corenote lab<br/>Agents, indexing, migration"]
+```
 
 ## Keynote demos
 
-| Demo | Story | Start here |
-|---|---|---|
-| 1. Sovereign Private Cloud with SQL Server | Run data and AI on organization-controlled infrastructure with SQL Server 2025, Azure Local, and Foundry Local. | [Demo 1](demo1-azure-local) |
-| 2. Mission-Critical, at Any Scale | Combine vector search, Azure SQL Database Hyperscale, and serverless named replicas in the Caldova evidence-search application. | [Demo 2](demo2-mission-critical) |
-| 3. Your Data Estate Running Itself | Use estate-wide signals to find a slow application and carry the investigation through to a concrete fix. | [Demo 3](demo3-estate-running-itself) |
+| Act | Live story | Technology | Enter the demo |
+|:---:|---|---|---|
+| **01** | **Sovereign Private Cloud**<br>Run data and AI on organization-controlled infrastructure. | SQL Server 2025 · Azure Local · Foundry Local | **[Open Demo 1 →](demo1-azure-local)** |
+| **02** | **Mission-Critical, at Any Scale**<br>Search evidence with native vectors, then scale reads without changing the app. | Azure SQL Hyperscale · DiskANN · named replicas | **[Open Demo 2 →](demo2-mission-critical)** |
+| **03** | **Your Data Estate Running Itself**<br>Follow estate-wide signals from a slow screen to a concrete fix. | Azure SQL · Fabric · operational intelligence | **[Open Demo 3 →](demo3-estate-running-itself)** |
 
-Demos 2 and 3 share the Caldova application and visual language so the keynote
-moves from application scale to estate operations as one continuous story.
+> Demos 2 and 3 are two acts of one Caldova story. The application and visual
+> language stay constant while the lens moves from application scale to estate operations.
 
 ## Corenote demos
 
-The [corenote collection](corenote) includes:
+| Experience | What you will see | Start here |
+|---|---|---|
+| **Caldova Evidence Agent** | A grounded biomedical research agent using Azure SQL, SQL MCP Server, and Microsoft Foundry. | [Build the investigation](corenote/caldovaevidenceagent) |
+| **Caldova Hands-Free Indexing** | Automatic indexing and Automatic Index Compaction on Azure SQL Database Hyperscale. | [Watch the index evolve](corenote/handsfreeindexing) |
+| **Nandiyo Logistics migration lab** | An end-to-end SQL Server and ASP.NET Core migration to Azure SQL and App Service. | [Run the migration](corenote/migration) |
+| **SSMS What's New** | Reproducible feature demos, storyboards, SQL assets, and presenter guidance. | [Explore SSMS](corenote/ssms-whatsnew) |
+| **One Connection String to Rule Them All** | The drivers and code behind the corenote connectivity segment. | [Compare the drivers](corenote/drivers) |
 
-- [Caldova Evidence Agent](corenote/caldovaevidenceagent): grounded biomedical
-  research using Azure SQL, SQL MCP Server, Microsoft Foundry, and Teams.
-- [Caldova Hands-Free Indexing](corenote/handsfreeindexing): automatic indexing
-  and Automatic Index Compaction on Azure SQL Database Hyperscale.
-- [Nandiyo Logistics migration lab](corenote/migration): an end-to-end SQL Server
-  and ASP.NET Core migration to Azure SQL Database and Azure App Service.
-- [SSMS what's new](corenote/ssms-whatsnew): reproducible feature demonstrations,
-  storyboards, SQL assets, and presenter guidance.
-- [One Connection String to Rule Them All](corenote/drivers): materials for the
-  corenote drivers segment.
-
-## Repository structure
-
-| Path | Contents |
-|---|---|
-| [demo1-azure-local](demo1-azure-local) | Keynote Demo 1 application, database, setup, and cloud variant |
-| [demo2-mission-critical](demo2-mission-critical) | Keynote Demo 2 application, data pipeline, workload, and scripts |
-| [demo3-estate-running-itself](demo3-estate-running-itself) | Keynote Demo 3 application, database, and presenter guidance |
-| [corenote](corenote) | Corenote demo packages and workshops |
-| [shared](shared) | Shared design system and reusable guidance |
+Browse the complete **[corenote collection →](corenote)**.
 
 ## Run with GitHub Copilot
 
-Open this repository in VS Code with GitHub Copilot Chat, select **Agent** mode,
-and type `/` to run one of the workspace prompts:
+Open the repository in VS Code, start GitHub Copilot Chat in **Agent** mode,
+and let the checked-in runbooks drive the work.
 
-| Prompt | Purpose |
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### Slash-command routes
+
+Type `/` and choose:
+
+```text
+/prepare-keynote-demo-1
+/rehearse-keynote-demo-1
+/prepare-handsfree-indexing
+/rehearse-handsfree-indexing
+```
+
+</td>
+<td width="50%" valign="top">
+
+### Natural-language routes
+
+Ask Copilot to:
+
+- [Build or verify the Evidence Agent](.github/skills/build-caldova-evidence-agent/SKILL.md)
+- [Start or check the Evidence Agent](.github/skills/run-caldova-evidence-agent/SKILL.md)
+- [Guide the Evidence Agent demo](.github/skills/demo-caldova-evidence-agent/SKILL.md)
+
+</td>
+</tr>
+</table>
+
+The repository skills use the current scripts, protect credentials, and pause
+before elevated, billable, data-changing, or destructive work.
+
+## Start here
+
+1. **Pick a story** from the tables above.
+2. **Open its README** for prerequisites, deployment, validation, and cleanup.
+3. **Use the runbook** before presenting or changing Azure resources.
+4. **Clean up** billable resources when the demo is complete.
+
+<details>
+<summary><strong>Repository map</strong></summary>
+
+| Path | What lives there |
 |---|---|
-| `/prepare-keynote-demo-1` | Prepare and validate Caldova Regional Care on Azure Local |
-| `/rehearse-keynote-demo-1` | Walk through the locked Keynote Demo 1 presenter flow |
-| `/prepare-handsfree-indexing` | Prepare, deploy, and verify the Hands-Free Indexing environment |
-| `/rehearse-handsfree-indexing` | Walk through automatic indexing and compaction one measured phase at a time |
+| [demo1-azure-local](demo1-azure-local) | Keynote Demo 1 app, database, setup, and cloud variant |
+| [demo2-mission-critical](demo2-mission-critical) | Keynote Demo 2 app, data pipeline, workload, and scripts |
+| [demo3-estate-running-itself](demo3-estate-running-itself) | Keynote Demo 3 app, database, and presenter guidance |
+| [corenote](corenote) | Corenote demo packages and workshops |
+| [shared](shared) | Shared design system and reusable guidance |
 
-The Caldova Evidence Agent also includes natural-language skills that Copilot
-selects from your request:
+</details>
 
-| Ask Copilot to | Skill |
-|---|---|
-| Build, deploy, repair, or verify the Caldova Evidence Agent | [Build Caldova Evidence Agent](.github/skills/build-caldova-evidence-agent/SKILL.md) |
-| Start, open, check, or stop the Caldova Evidence Agent application | [Run Caldova Evidence Agent](.github/skills/run-caldova-evidence-agent/SKILL.md) |
-| Rehearse or guide the Caldova Evidence Agent demo one beat at a time | [Demo Caldova Evidence Agent](.github/skills/demo-caldova-evidence-agent/SKILL.md) |
+---
 
-The prompts use repository skills in [.github/skills](.github/skills). They read
-the current runbooks, use the checked-in scripts, protect credentials, and stop
-for confirmation before elevated, billable, data-changing, or destructive work.
-
-## Getting started
-
-Open the README in the demo folder you want to run. Each demo documents its own
-prerequisites, deployment steps, validation, and cleanup.
-
+Event details and hero image link to the
+[official FabCon + SQLCon Europe 2026 website](https://espc.tech/conference/fabcon-europe-2026/).
 See [CONTRIBUTING.md](CONTRIBUTING.md) before changing shared assets or adding a
-new demo. Report suspected vulnerabilities according to [SECURITY.md](SECURITY.md).
+demo. Report suspected vulnerabilities according to [SECURITY.md](SECURITY.md).
