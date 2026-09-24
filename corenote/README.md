@@ -46,7 +46,21 @@ recorded and alternate storyboards, presenter notes, and versioned SQL assets.
 [One Connection String to Rule Them All](drivers) contains materials for the
 corenote drivers segment.
 
-## Run Hands-Free Indexing with GitHub Copilot
+## Run with GitHub Copilot
+
+### Caldova Evidence Agent
+
+Open the repository in VS Code with GitHub Copilot Chat in **Agent** mode and
+ask Copilot to:
+
+- Build, deploy, repair, or verify the Caldova Evidence Agent with the
+	[build skill](../.github/skills/build-caldova-evidence-agent/SKILL.md).
+- Start, open, check, or stop the application with the
+	[run skill](../.github/skills/run-caldova-evidence-agent/SKILL.md).
+- Rehearse or guide the demo one beat at a time with the
+	[demo skill](../.github/skills/demo-caldova-evidence-agent/SKILL.md).
+
+### Caldova Hands-Free Indexing
 
 Open the repository in VS Code with GitHub Copilot Chat in **Agent** mode, type
 `/`, and choose:
